@@ -7,7 +7,7 @@
   - Configure environment variables for Shopify API credentials and Multipass secret
   - _Requirements: 11.1, 11.2, 9.1_
 
-- [ ] 2. Set up core infrastructure and dependencies
+- [x] 2. Set up core infrastructure and dependencies
   - Install and configure Redis client (ioredis) with TLS support
   - Install and configure Bull queue for job processing
   - Set up Express.js server with HTTPS enforcement

@@ -88,3 +88,9 @@ export function validateConfig(): void {
         console.warn('   Please configure these in your .env file or environment');
     }
 }
+
+// Export infrastructure modules
+export * from './logger.js';
+export * from './queue.js';
+export * from './redis.js';
+
