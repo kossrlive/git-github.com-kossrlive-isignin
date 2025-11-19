@@ -15,36 +15,36 @@
   - Install testing frameworks (Jest, fast-check, supertest)
   - _Requirements: 9.4, 9.5, 10.1, 7.5_
 
-- [ ] 3. Implement provider interfaces and base implementations
-- [ ] 3.1 Create ISMSProvider interface
+- [x] 3. Implement provider interfaces and base implementations
+- [x] 3.1 Create ISMSProvider interface
   - Define interface with sendSMS, checkDeliveryStatus, and handleWebhook methods
   - Define SendSMSParams, SendSMSResult, DeliveryStatus, and DeliveryReceipt types
   - _Requirements: 13.4_
 
-- [ ] 3.2 Create IOAuthProvider interface
+- [x] 3.2 Create IOAuthProvider interface
   - Define interface with getAuthorizationUrl, exchangeCodeForToken, getUserProfile, and refreshToken methods
   - Define OAuthTokens and UserProfile types
   - _Requirements: 14.1_
 
-- [ ] 3.3 Implement SmsToProvider
+- [x] 3.3 Implement SmsToProvider
   - Implement ISMSProvider for sms.to API
   - Handle API authentication with API key
   - Implement sendSMS with proper error handling
   - Implement DLR webhook parsing
   - _Requirements: 1.3, 5.1_
 
-- [ ] 3.4 Write property test for SmsToProvider
+- [x] 3.4 Write property test for SmsToProvider
   - **Property 31: Provider error logging**
   - **Validates: Requirements 13.5**
 
-- [ ] 3.5 Implement GoogleOAuthProvider
+- [x] 3.5 Implement GoogleOAuthProvider
   - Implement IOAuthProvider for Google OAuth 2.0
   - Generate authorization URL with proper scopes
   - Exchange authorization code for tokens
   - Fetch user profile from Google API
   - _Requirements: 3.1, 3.2, 3.3_
 
-- [ ] 3.6 Write property test for OAuth profile normalization
+- [x] 3.6 Write property test for OAuth profile normalization
   - **Property 10: OAuth user profile normalization**
   - **Validates: Requirements 14.4**
 
