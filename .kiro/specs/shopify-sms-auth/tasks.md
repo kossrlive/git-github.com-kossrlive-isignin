@@ -48,8 +48,8 @@
   - **Property 10: OAuth user profile normalization**
   - **Validates: Requirements 14.4**
 
-- [ ] 4. Implement core services
-- [ ] 4.1 Implement OTPService
+- [-] 4. Implement core services
+- [x] 4.1 Implement OTPService
   - Generate 6-digit OTP codes
   - Store OTP in Redis with 5-minute TTL
   - Verify OTP against stored value
@@ -58,7 +58,7 @@
   - Delete OTP after successful use
   - _Requirements: 1.2, 1.4, 6.1, 6.2, 6.4_
 
-- [ ] 4.2 Write property tests for OTPService
+- [x] 4.2 Write property tests for OTPService
   - **Property 2: OTP generation format**
   - **Property 3: OTP verification correctness**
   - **Property 14: Failed attempt counter**
@@ -66,14 +66,14 @@
   - **Property 17: OTP deletion after use**
   - **Validates: Requirements 1.2, 1.4, 6.1, 6.2, 6.4**
 
-- [ ] 4.3 Implement MultipassService
+- [x] 4.3 Implement MultipassService
   - Generate Multipass tokens with customer data
   - Encrypt and sign tokens using Multipass secret
   - Include email, created_at, and return_to in token payload
   - Generate redirect URL with token
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 4.4 Write property tests for MultipassService
+- [x] 4.4 Write property tests for MultipassService
   - **Property 7: Multipass token generation**
   - **Property 8: Multipass token contents**
   - **Validates: Requirements 4.1, 4.2**
