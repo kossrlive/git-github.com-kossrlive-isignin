@@ -78,7 +78,7 @@
   - **Property 8: Multipass token contents**
   - **Validates: Requirements 4.1, 4.2**
 
-- [ ] 4.5 Implement SMSService with provider management
+- [x] 4.5 Implement SMSService with provider management
   - Load SMS provider configuration with priorities
   - Implement provider selection logic
   - Implement fallback mechanism (try next provider on failure)
@@ -86,23 +86,23 @@
   - Track SMS delivery in Redis
   - _Requirements: 13.1, 13.2, 13.3, 5.1_
 
-- [ ] 4.6 Write property tests for SMSService
+- [x] 4.6 Write property tests for SMSService
   - **Property 29: SMS provider fallback**
   - **Property 30: Provider rotation on resend**
   - **Validates: Requirements 13.2, 13.3**
 
-- [ ] 4.7 Implement OAuthService
+- [x] 4.7 Implement OAuthService
   - Register OAuth providers in a map
   - Implement provider lookup by name
   - Initiate OAuth flow with state parameter
   - Handle OAuth callback and exchange code for profile
   - _Requirements: 14.1, 14.2, 14.3_
 
-- [ ] 4.8 Write property test for OAuth provider interface compliance
+- [x] 4.8 Write property test for OAuth provider interface compliance
   - **Property 32: OAuth provider interface compliance**
   - **Validates: Requirements 14.1**
 
-- [ ] 4.9 Implement CustomerService
+- [x] 4.9 Implement CustomerService
   - Find customer by email using Shopify Admin API
   - Find customer by phone using Shopify Admin API
   - Create new customer with provided data
@@ -110,7 +110,7 @@
   - Handle Shopify API errors with retry logic
   - _Requirements: 1.5, 2.2, 2.4, 3.4, 3.5_
 
-- [ ] 4.10 Write property test for customer creation
+- [x] 4.10 Write property test for customer creation
   - **Property 4: Customer creation or retrieval**
   - **Validates: Requirements 1.5**
 
