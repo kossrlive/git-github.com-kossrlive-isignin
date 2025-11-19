@@ -114,8 +114,8 @@
   - **Property 4: Customer creation or retrieval**
   - **Validates: Requirements 1.5**
 
-- [ ] 5. Implement AuthService orchestration
-- [ ] 5.1 Implement phone authentication flow
+- [x] 5. Implement AuthService orchestration
+- [x] 5.1 Implement phone authentication flow
   - Validate phone number format (E.164)
   - Generate and store OTP
   - Queue SMS sending job
@@ -123,11 +123,11 @@
   - Generate Multipass token
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
 
-- [ ] 5.2 Write property tests for phone authentication
+- [x] 5.2 Write property tests for phone authentication
   - **Property 1: Phone number validation consistency**
   - **Validates: Requirements 1.1**
 
-- [ ] 5.3 Implement email/password authentication flow
+- [x] 5.3 Implement email/password authentication flow
   - Validate email format
   - Find customer in Shopify
   - Verify password with bcrypt
@@ -135,12 +135,12 @@
   - Generate Multipass token
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 5.4 Write property tests for email authentication
+- [x] 5.4 Write property tests for email authentication
   - **Property 5: Email validation consistency**
   - **Property 6: Password hashing security**
   - **Validates: Requirements 2.1, 9.3**
 
-- [ ] 5.5 Implement OAuth authentication flow
+- [x] 5.5 Implement OAuth authentication flow
   - Generate OAuth authorization URL
   - Handle OAuth callback
   - Exchange code for tokens
@@ -150,7 +150,7 @@
   - Generate Multipass token
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 5.6 Write property test for OAuth authorization URL
+- [x] 5.6 Write property test for OAuth authorization URL
   - **Property 9: OAuth authorization URL format**
   - **Validates: Requirements 3.1**
 
