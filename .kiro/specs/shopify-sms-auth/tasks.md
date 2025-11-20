@@ -154,35 +154,35 @@
   - **Property 9: OAuth authorization URL format**
   - **Validates: Requirements 3.1**
 
-- [ ] 6. Implement rate limiting and security
-- [ ] 6.1 Implement rate limiting middleware
+- [x] 6. Implement rate limiting and security
+- [x] 6.1 Implement rate limiting middleware
   - Track requests per IP in Redis with 1-minute TTL
   - Block requests after 10 requests per minute
   - Return 429 status with retry-after header
   - _Requirements: 6.3_
 
-- [ ] 6.2 Write property test for IP rate limiting
+- [x] 6.2 Write property test for IP rate limiting
   - **Property 16: IP rate limiting**
   - **Validates: Requirements 6.3**
 
-- [ ] 6.3 Implement OTP resend rate limiting
+- [x] 6.3 Implement OTP resend rate limiting
   - Check last send time in Redis
   - Reject if less than 30 seconds since last send
   - Track send attempts (3 per 10 minutes)
   - Block phone after 3 attempts for 10 minutes
   - _Requirements: 5.4, 5.5_
 
-- [ ] 6.4 Write property tests for OTP rate limiting
+- [x] 6.4 Write property tests for OTP rate limiting
   - **Property 12: Rate limiting for resend**
   - **Property 13: Send attempt blocking**
   - **Validates: Requirements 5.4, 5.5**
 
-- [ ] 6.5 Implement HMAC validation middleware
+- [x] 6.5 Implement HMAC validation middleware
   - Validate HMAC signature for Shopify requests
   - Reject requests with invalid signatures
   - _Requirements: 11.5_
 
-- [ ] 6.6 Write property test for HMAC validation
+- [x] 6.6 Write property test for HMAC validation
   - **Property 26: HMAC validation**
   - **Validates: Requirements 11.5**
 

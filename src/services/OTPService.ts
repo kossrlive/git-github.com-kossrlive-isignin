@@ -257,6 +257,141 @@ export class OTPService {
     }
   }
 
+  /**
+   * Check if resend is allowed (30 seconds cooldown)
+   * Requirement 5.4: Check that at least 30 seconds passed since last send
+   */
+  async canResendOTP(phone: string): Promise<{ allowed: boolean; retryAfter?: number }> {
+    const key = this.getLastSendKey(phone);
+    
+    try {
+      const lastSendTime = await this.redis.get(key);
+      
+      if (!lastSendTime) {
+        return { allowed: true };
+      }
+      
+      const lastSend = parseInt(lastSendTime, 10);
+      const now = Date.now();
+      const timeSinceLastSend = now - lastSend;
+      const minInterval = 30 * 1000; // 30 seconds
+      
+      if (timeSinceLastSend < minInterval) {
+        const retryAfter = Math.ceil((minInterval - timeSinceLastSend) / 1000);
+        
+        logger.warn('OTP resend attempted too soon', {
+          phone: this.maskPhone(phone),
+          timeSinceLastSend: `${Math.floor(timeSinceLastSend / 1000)}s`,
+          retryAfter: `${retryAfter}s`
+        });
+        
+        return { allowed: false, retryAfter };
+      }
+      
+      return { allowed: true };
+    } catch (error) {
+      logger.error('Failed to check resend cooldown', {
+        phone: this.maskPhone(phone),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      // Fail open to not block legitimate users
+      return { allowed: true };
+    }
+  }
+
+  /**
+   * Track send attempt and check if phone should be blocked
+   * Requirement 5.5: Track send attempts (3 per 10 minutes), block after 3 attempts
+   */
+  async trackSendAttempt(phone: string): Promise<{ allowed: boolean; retryAfter?: number }> {
+    const key = this.getSendAttemptsKey(phone);
+    const maxSendAttempts = 3;
+    const windowSeconds = 10 * 60; // 10 minutes
+    const blockDurationSeconds = 10 * 60; // 10 minutes
+    
+    try {
+      const attempts = await this.redis.incr(key);
+      
+      // Set TTL on first attempt
+      if (attempts === 1) {
+        await this.redis.expire(key, windowSeconds);
+      }
+      
+      logger.info('Send attempt tracked', {
+        phone: this.maskPhone(phone),
+        attempts,
+        maxAttempts: maxSendAttempts
+      });
+      
+      if (attempts > maxSendAttempts) {
+        // Block phone for 10 minutes
+        const blockKey = this.getSendBlockedKey(phone);
+        await this.redis.setex(blockKey, blockDurationSeconds, '1');
+        
+        const ttl = await this.redis.ttl(blockKey);
+        
+        logger.warn('Phone blocked due to too many send attempts', {
+          phone: this.maskPhone(phone),
+          attempts,
+          blockDuration: blockDurationSeconds
+        });
+        
+        return { allowed: false, retryAfter: ttl > 0 ? ttl : blockDurationSeconds };
+      }
+      
+      return { allowed: true };
+    } catch (error) {
+      logger.error('Failed to track send attempt', {
+        phone: this.maskPhone(phone),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      // Fail open to not block legitimate users
+      return { allowed: true };
+    }
+  }
+
+  /**
+   * Check if phone is blocked from sending
+   * Requirement 5.5: Check if phone is blocked from sending
+   */
+  async isSendBlocked(phone: string): Promise<boolean> {
+    const key = this.getSendBlockedKey(phone);
+    
+    try {
+      const blocked = await this.redis.exists(key);
+      return blocked === 1;
+    } catch (error) {
+      logger.error('Failed to check if phone is send-blocked', {
+        phone: this.maskPhone(phone),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      return false; // Fail open
+    }
+  }
+
+  /**
+   * Record the timestamp of OTP send
+   * Requirement 5.4: Track last send time for rate limiting
+   */
+  async recordSendTime(phone: string): Promise<void> {
+    const key = this.getLastSendKey(phone);
+    const ttl = 60; // Keep for 1 minute (longer than 30s cooldown)
+    
+    try {
+      await this.redis.setex(key, ttl, Date.now().toString());
+      
+      logger.info('Send time recorded', {
+        phone: this.maskPhone(phone)
+      });
+    } catch (error) {
+      logger.error('Failed to record send time', {
+        phone: this.maskPhone(phone),
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      // Don't throw - this is not critical
+    }
+  }
+
   // Redis key helpers
   private getOTPKey(phone: string): string {
     return `otp:${phone}`;
@@ -268,6 +403,18 @@ export class OTPService {
 
   private getBlockedKey(phone: string): string {
     return `otp:blocked:${phone}`;
+  }
+
+  private getLastSendKey(phone: string): string {
+    return `otp:lastsend:${phone}`;
+  }
+
+  private getSendAttemptsKey(phone: string): string {
+    return `otp:sendattempts:${phone}`;
+  }
+
+  private getSendBlockedKey(phone: string): string {
+    return `otp:sendblocked:${phone}`;
   }
 
   // Mask phone number for logging (PII protection)

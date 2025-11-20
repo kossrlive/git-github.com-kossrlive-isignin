@@ -216,6 +216,127 @@ describe('OTPService Property-Based Tests', () => {
   });
 
   /**
+   * Feature: shopify-sms-auth, Property 12: Rate limiting for resend
+   * Validates: Requirements 5.4
+   */
+  describe('Property 12: Rate limiting for resend', () => {
+    it('should reject resend if less than 30 seconds since last send', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 10, maxLength: 15 }).filter(s => s.trim().length > 0),
+          async (phone) => {
+            // Record initial send time
+            await otpService.recordSendTime(phone);
+            
+            // Immediately check if resend is allowed
+            const result = await otpService.canResendOTP(phone);
+            
+            // Should not be allowed
+            expect(result.allowed).toBe(false);
+            expect(result.retryAfter).toBeDefined();
+            expect(result.retryAfter).toBeGreaterThan(0);
+            expect(result.retryAfter).toBeLessThanOrEqual(30);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should allow resend if no previous send recorded', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 10, maxLength: 15 }).filter(s => s.trim().length > 0),
+          async (phone) => {
+            // Check if resend is allowed without any previous send
+            const result = await otpService.canResendOTP(phone);
+            
+            // Should be allowed
+            expect(result.allowed).toBe(true);
+            expect(result.retryAfter).toBeUndefined();
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+  });
+
+  /**
+   * Feature: shopify-sms-auth, Property 13: Send attempt blocking
+   * Validates: Requirements 5.5
+   */
+  describe('Property 13: Send attempt blocking', () => {
+    it('should block phone after 3 send attempts within 10 minutes', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 10, maxLength: 15 }).filter(s => s.trim().length > 0),
+          async (phone) => {
+            // Make 3 send attempts
+            for (let i = 0; i < 3; i++) {
+              const result = await otpService.trackSendAttempt(phone);
+              expect(result.allowed).toBe(true);
+            }
+            
+            // 4th attempt should be blocked
+            const fourthAttempt = await otpService.trackSendAttempt(phone);
+            expect(fourthAttempt.allowed).toBe(false);
+            expect(fourthAttempt.retryAfter).toBeDefined();
+            expect(fourthAttempt.retryAfter).toBeGreaterThan(0);
+            
+            // Phone should be send-blocked
+            const isBlocked = await otpService.isSendBlocked(phone);
+            expect(isBlocked).toBe(true);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should allow up to 3 send attempts', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 10, maxLength: 15 }).filter(s => s.trim().length > 0),
+          fc.integer({ min: 1, max: 3 }),
+          async (phone, numAttempts) => {
+            // Make up to 3 send attempts
+            for (let i = 0; i < numAttempts; i++) {
+              const result = await otpService.trackSendAttempt(phone);
+              expect(result.allowed).toBe(true);
+            }
+            
+            // Phone should not be send-blocked yet
+            const isBlocked = await otpService.isSendBlocked(phone);
+            expect(isBlocked).toBe(false);
+          }
+        ),
+        { numRuns: 100 }
+      );
+    });
+
+    it('should block for 10 minutes after exceeding send attempts', async () => {
+      await fc.assert(
+        fc.asyncProperty(
+          fc.string({ minLength: 10, maxLength: 15 }).filter(s => s.trim().length > 0),
+          async (phone) => {
+            // Make 4 send attempts (3 allowed + 1 blocked)
+            for (let i = 0; i < 4; i++) {
+              await otpService.trackSendAttempt(phone);
+            }
+            
+            // Check that retry after is approximately 10 minutes (600 seconds)
+            const result = await otpService.trackSendAttempt(phone);
+            expect(result.allowed).toBe(false);
+            expect(result.retryAfter).toBeDefined();
+            // Should be close to 600 seconds (allow some variance for test execution time)
+            expect(result.retryAfter).toBeGreaterThan(590);
+            expect(result.retryAfter).toBeLessThanOrEqual(600);
+          }
+        ),
+        { numRuns: 20 }
+      );
+    });
+  });
+
+  /**
    * Feature: shopify-sms-auth, Property 17: OTP deletion after use
    * Validates: Requirements 6.4
    */
