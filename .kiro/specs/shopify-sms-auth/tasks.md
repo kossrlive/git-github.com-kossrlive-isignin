@@ -328,33 +328,33 @@
   - Order confirmation feature is implemented
   - All property-based tests are passing
 
-- [ ] 12. Create admin UI for app configuration
-- [ ] 12.1 Set up React admin panel with Shopify Polaris
+- [x] 12. Create admin UI for app configuration
+- [x] 12.1 Set up React admin panel with Shopify Polaris
   - Initialize React app in `admin/` directory
   - Install @shopify/polaris and @shopify/app-bridge-react
   - Create admin page component with Shopify App Bridge
   - Set up routing and navigation
   - _Requirements: 12.1_
 
-- [ ] 12.2 Implement settings form UI
+- [x] 12.2 Implement settings form UI
   - Create form for enabling/disabling auth methods (SMS, email, Google)
   - Add color picker for form customization (primary color, button style)
   - Add logo upload field with preview
   - Add save button with loading state
   - _Requirements: 12.1, 12.4, 14.5_
 
-- [ ] 12.3 Implement settings API endpoints
+- [x] 12.3 Implement settings API endpoints
   - Create GET /api/admin/settings endpoint to fetch settings from shop metafields
   - Create PUT /api/admin/settings endpoint to save settings to shop metafields
   - Add validation for settings data
   - _Requirements: 12.2_
 
-- [ ] 12.4 Write property tests for settings persistence
+- [x] 12.4 Write property tests for settings persistence
   - **Property 27: Settings persistence**
   - **Property 28: Dynamic auth method availability**
   - **Validates: Requirements 12.2, 12.4**
 
-- [ ] 12.5 Implement real-time settings updates
+- [x] 12.5 Implement real-time settings updates
   - Use Shopify App Bridge to detect settings changes
   - Update admin UI without page reload when settings change
   - Show success/error notifications

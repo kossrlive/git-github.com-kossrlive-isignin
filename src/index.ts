@@ -9,6 +9,7 @@ import { httpsEnforcement } from './middleware/httpsEnforcement.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { GoogleOAuthProvider } from './providers/GoogleOAuthProvider.js';
 import { SmsToProvider } from './providers/SmsToProvider.js';
+import { createAdminRouter } from './routes/admin.js';
 import { createAuthRouter } from './routes/auth.js';
 import { createWebhookRouter } from './routes/webhooks.js';
 import { AuthService } from './services/AuthService.js';
@@ -17,6 +18,7 @@ import { MultipassService } from './services/MultipassService.js';
 import { OAuthService } from './services/OAuthService.js';
 import { OrderService } from './services/OrderService.js';
 import { OTPService } from './services/OTPService.js';
+import { SettingsService } from './services/SettingsService.js';
 import { SMSService } from './services/SMSService.js';
 
 // Load environment variables
@@ -35,6 +37,9 @@ app.use(requestLogger);
 // 3. Body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// 4. Static file serving for uploads
+app.use('/uploads', express.static('uploads'));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -91,6 +96,9 @@ const initializeInfrastructure = async (): Promise<void> => {
         
         // Initialize Order service
         const orderService = new OrderService(redis, otpService, smsService);
+        
+        // Initialize Settings service
+        const settingsService = new SettingsService(redis);
 
         // Register routes
         const authRouter = createAuthRouter(authService, otpService, smsService);
@@ -98,6 +106,9 @@ const initializeInfrastructure = async (): Promise<void> => {
         
         const webhookRouter = createWebhookRouter(orderService, smsService);
         app.use('/api/webhooks', webhookRouter);
+        
+        const adminRouter = createAdminRouter(settingsService);
+        app.use('/api/admin', adminRouter);
         
         // Register 404 handler (after all routes)
         app.use(notFoundHandler);
