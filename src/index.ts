@@ -50,6 +50,23 @@ app.get('/health', (req, res) => {
     });
 });
 
+// Root endpoint - friendly message
+app.get('/', (req, res) => {
+    res.status(418).json({
+        message: "I'm a teapot ☕",
+        service: 'Shopify SMS Authentication App',
+        version: '1.0.0',
+        endpoints: {
+            health: '/health',
+            auth: '/api/auth/*',
+            admin: '/api/admin/*',
+            webhooks: '/api/webhooks/*'
+        },
+        documentation: 'See README.md for API documentation',
+        requestId: req.requestId
+    });
+});
+
 // Initialize infrastructure and services
 const initializeInfrastructure = async (): Promise<void> => {
     const isDevelopment = process.env.NODE_ENV === 'development';
