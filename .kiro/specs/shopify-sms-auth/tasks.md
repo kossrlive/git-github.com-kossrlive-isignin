@@ -399,7 +399,7 @@
   - **Property 34: Post-auth checkout redirect**
   - **Validates: Requirements 15.5**
 
-- [ ] 14. Checkpoint - Frontend implementation complete
+- [x] 14. Checkpoint - Frontend implementation complete
   - Ensure all tests pass, ask the user if questions arise
   - Admin UI is functional and can save/load settings
   - Storefront extension displays login form correctly
