@@ -229,7 +229,7 @@ export class SMSService {
   /**
    * Update delivery status
    */
-  async updateDeliveryStatus(messageId: string, status: DeliveryStatus): Promise<void> {
+  async updateDeliveryStatus(messageId: string, status: DeliveryStatus | string): Promise<void> {
     const key = this.getDeliveryTrackingKey(messageId);
 
     try {
@@ -241,9 +241,10 @@ export class SMSService {
       }
 
       const tracking: SMSDeliveryTracking = JSON.parse(trackingData);
-      tracking.status = status.status;
+      const statusValue = typeof status === 'string' ? status : status.status;
+      tracking.status = statusValue;
 
-      if (status.status === 'delivered') {
+      if (statusValue === 'delivered') {
         tracking.deliveredAt = Date.now();
       }
 
@@ -255,7 +256,7 @@ export class SMSService {
 
       logger.info('Delivery status updated', {
         messageId,
-        status: status.status,
+        status: statusValue,
         phone: this.maskPhone(tracking.phone)
       });
     } catch (error) {

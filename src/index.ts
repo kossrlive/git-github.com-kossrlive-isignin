@@ -1,10 +1,20 @@
 import dotenv from 'dotenv';
 import express from 'express';
+import { config } from './config/index.js';
 import { logger } from './config/logger.js';
 import { closeSMSQueue, getSMSQueue } from './config/queue.js';
 import { closeRedisClient, getRedisClient } from './config/redis.js';
 import { httpsEnforcement } from './middleware/httpsEnforcement.js';
 import { requestLogger } from './middleware/requestLogger.js';
+import { GoogleOAuthProvider } from './providers/GoogleOAuthProvider.js';
+import { SmsToProvider } from './providers/SmsToProvider.js';
+import { createAuthRouter } from './routes/auth.js';
+import { AuthService } from './services/AuthService.js';
+import { CustomerService } from './services/CustomerService.js';
+import { MultipassService } from './services/MultipassService.js';
+import { OAuthService } from './services/OAuthService.js';
+import { OTPService } from './services/OTPService.js';
+import { SMSService } from './services/SMSService.js';
 
 // Load environment variables
 dotenv.config();
@@ -32,7 +42,7 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Initialize infrastructure
+// Initialize infrastructure and services
 const initializeInfrastructure = async (): Promise<void> => {
     const isDevelopment = process.env.NODE_ENV === 'development';
     
@@ -43,9 +53,44 @@ const initializeInfrastructure = async (): Promise<void> => {
         logger.info('Redis connection established');
 
         // Initialize Bull queue
-        getSMSQueue();
+        const smsQueue = getSMSQueue();
         logger.info('Bull queue initialized');
 
+        // Initialize services
+        const multipassService = new MultipassService();
+        const customerService = new CustomerService();
+        const otpService = new OTPService(redis);
+        
+        // Initialize SMS providers
+        const smsToProvider = new SmsToProvider(
+            config.sms.smsTo.apiKey,
+            config.sms.smsTo.senderId
+        );
+        const smsService = new SMSService([smsToProvider], redis);
+        
+        // Initialize OAuth service and providers
+        const oauthService = new OAuthService();
+        const googleProvider = new GoogleOAuthProvider(
+            config.oauth.google.clientId,
+            config.oauth.google.clientSecret
+        );
+        oauthService.registerProvider('google', googleProvider);
+        
+        // Initialize Auth service
+        const authService = new AuthService(
+            multipassService,
+            customerService,
+            otpService,
+            smsService,
+            oauthService,
+            smsQueue
+        );
+
+        // Register routes
+        const authRouter = createAuthRouter(authService, otpService, smsService);
+        app.use('/api/auth', authRouter);
+        
+        logger.info('Services and routes initialized');
         logger.info('Infrastructure initialization complete');
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';

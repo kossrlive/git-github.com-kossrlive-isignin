@@ -15,7 +15,7 @@ export const config = {
 
     // SMS Provider Configuration
     sms: {
-        to: {
+        smsTo: {
             apiKey: process.env.SMS_TO_API_KEY || '',
             senderId: process.env.SMS_TO_SENDER_ID || '',
         },

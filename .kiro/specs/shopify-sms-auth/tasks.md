@@ -205,8 +205,8 @@
   - **Property 25: Failed job handling**
   - **Validates: Requirements 10.1, 10.2, 10.4, 10.5**
 
-- [ ] 8. Implement API routes
-- [ ] 8.1 Implement POST /api/auth/send-otp
+- [x] 8. Implement API routes
+- [x] 8.1 Implement POST /api/auth/send-otp
   - Validate phone number
   - Check rate limits
   - Generate OTP
@@ -214,7 +214,7 @@
   - Return success response immediately
   - _Requirements: 1.1, 1.2, 1.3, 5.4, 5.5_
 
-- [ ] 8.2 Implement POST /api/auth/verify-otp
+- [x] 8.2 Implement POST /api/auth/verify-otp
   - Validate OTP format
   - Verify OTP with OTPService
   - Find/create customer
@@ -222,20 +222,20 @@
   - Return Multipass URL
   - _Requirements: 1.4, 1.5, 4.1, 4.3_
 
-- [ ] 8.3 Implement POST /api/auth/email-login
+- [x] 8.3 Implement POST /api/auth/email-login
   - Validate email and password
   - Authenticate with CustomerService
   - Generate Multipass token
   - Return Multipass URL
   - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 8.4 Implement GET /api/auth/oauth/:provider
+- [x] 8.4 Implement GET /api/auth/oauth/:provider
   - Get OAuth provider
   - Generate authorization URL
   - Return redirect to OAuth provider
   - _Requirements: 3.1_
 
-- [ ] 8.5 Implement POST /api/auth/oauth/:provider/callback
+- [x] 8.5 Implement POST /api/auth/oauth/:provider/callback
   - Get OAuth provider
   - Exchange code for tokens
   - Fetch user profile
@@ -244,23 +244,23 @@
   - Return Multipass URL
   - _Requirements: 3.2, 3.3, 3.4, 3.5_
 
-- [ ] 8.6 Implement POST /api/auth/session/restore
+- [x] 8.6 Implement POST /api/auth/session/restore
   - Validate session data from localStorage/cookies
   - Restore session via Multipass
   - Return Multipass URL
   - _Requirements: 15.3_
 
-- [ ] 8.7 Write property test for session restoration
+- [x] 8.7 Write property test for session restoration
   - **Property 33: Session restoration from storage**
   - **Validates: Requirements 15.3**
 
-- [ ] 8.8 Implement POST /api/webhooks/sms-dlr
+- [x] 8.8 Implement POST /api/webhooks/sms-dlr
   - Parse DLR webhook from SMS provider
   - Update delivery status in Redis
   - Log delivery status
   - _Requirements: 5.2_
 
-- [ ] 8.9 Write property test for DLR webhook handling
+- [x] 8.9 Write property test for DLR webhook handling
   - **Property 11: SMS delivery tracking**
   - **Validates: Requirements 5.1**
 
