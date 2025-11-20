@@ -296,28 +296,28 @@
   - **Property 20: Request logging completeness**
   - **Validates: Requirements 7.5**
 
-- [ ] 10. Implement order confirmation feature
-- [ ] 10.1 Implement order OTP generation
+- [-] 10. Implement order confirmation feature
+- [-] 10.1 Implement order OTP generation
   - Generate unique OTP for order
   - Store OTP with order ID in Redis (10 min TTL)
   - Queue SMS with order number
   - _Requirements: 8.1, 8.2_
 
-- [ ] 10.2 Write property test for order OTP
+- [x] 10.2 Write property test for order OTP
   - **Property 21: Order OTP uniqueness**
   - **Validates: Requirements 8.1**
 
-- [ ] 10.3 Implement order OTP verification
+- [x] 10.3 Implement order OTP verification
   - Verify OTP matches order ID
   - Update order status in Shopify
   - Delete OTP after use
   - _Requirements: 8.3, 8.4_
 
-- [ ] 10.4 Write property test for order OTP verification
+- [x] 10.4 Write property test for order OTP verification
   - **Property 22: Order OTP verification**
   - **Validates: Requirements 8.3**
 
-- [ ] 10.5 Implement Shopify order webhook handler
+- [x] 10.5 Implement Shopify order webhook handler
   - Listen for orders/create webhook
   - Trigger OTP generation for orders requiring confirmation
   - _Requirements: 8.1_
