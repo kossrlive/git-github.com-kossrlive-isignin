@@ -31,8 +31,12 @@ export class SMSService {
    * Requirement 13.1: Load SMS provider configuration with priorities
    */
   constructor(providers: ISMSProvider[], redis: Redis) {
+    // Allow empty providers in development mode
     if (!providers || providers.length === 0) {
-      throw new Error('At least one SMS provider is required');
+      logger.warn('SMS Service initialized without providers - SMS features will be disabled');
+      this.providers = [];
+      this.redis = redis;
+      return;
     }
 
     // Sort providers by priority (lower number = higher priority)
@@ -57,6 +61,17 @@ export class SMSService {
    * Requirement 13.2: Automatically switch to backup provider on failure
    */
   async sendWithFallback(params: SendSMSParams, attemptNumber: number = 0): Promise<SendSMSResult> {
+    // Check if any providers are configured
+    if (this.providers.length === 0) {
+      logger.error('Cannot send SMS - no providers configured');
+      return {
+        success: false,
+        messageId: '',
+        provider: 'none',
+        error: 'No SMS providers configured'
+      };
+    }
+
     let lastError: string | undefined;
 
     // Try each provider in priority order

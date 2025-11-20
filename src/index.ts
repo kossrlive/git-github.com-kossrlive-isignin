@@ -54,84 +54,121 @@ app.get('/health', (req, res) => {
 const initializeInfrastructure = async (): Promise<void> => {
     const isDevelopment = process.env.NODE_ENV === 'development';
     
+    // Initialize Redis
+    let redis;
     try {
-        // Initialize Redis
-        const redis = getRedisClient();
+        redis = getRedisClient();
         await redis.ping();
         logger.info('Redis connection established');
-
-        // Initialize Bull queue
-        const smsQueue = getSMSQueue();
-        logger.info('Bull queue initialized');
-
-        // Initialize services
-        const multipassService = new MultipassService();
-        const customerService = new CustomerService();
-        const otpService = new OTPService(redis);
-        
-        // Initialize SMS providers
-        const smsToProvider = new SmsToProvider(
-            config.sms.smsTo.apiKey,
-            config.sms.smsTo.senderId
-        );
-        const smsService = new SMSService([smsToProvider], redis);
-        
-        // Initialize OAuth service and providers
-        const oauthService = new OAuthService();
-        const googleProvider = new GoogleOAuthProvider(
-            config.oauth.google.clientId,
-            config.oauth.google.clientSecret
-        );
-        oauthService.registerProvider('google', googleProvider);
-        
-        // Initialize Auth service
-        const authService = new AuthService(
-            multipassService,
-            customerService,
-            otpService,
-            smsService,
-            oauthService,
-            smsQueue
-        );
-        
-        // Initialize Order service
-        const orderService = new OrderService(redis, otpService, smsService);
-        
-        // Initialize Settings service
-        const settingsService = new SettingsService(redis);
-
-        // Register routes
-        const authRouter = createAuthRouter(authService, otpService, smsService);
-        app.use('/api/auth', authRouter);
-        
-        const webhookRouter = createWebhookRouter(orderService, smsService);
-        app.use('/api/webhooks', webhookRouter);
-        
-        const adminRouter = createAdminRouter(settingsService);
-        app.use('/api/admin', adminRouter);
-        
-        // Register 404 handler (after all routes)
-        app.use(notFoundHandler);
-        
-        // Register global error handler (must be last)
-        app.use(errorHandler);
-        
-        logger.info('Services and routes initialized');
-        logger.info('Infrastructure initialization complete');
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        logger.error('Failed to initialize infrastructure', { error: errorMessage });
+        logger.error('Failed to connect to Redis', { error: errorMessage });
         
-        // In development, allow server to start without Redis
         if (isDevelopment) {
             logger.warn('⚠️  Running in development mode without Redis connection');
             logger.warn('⚠️  Some features will not work until Redis is available');
             logger.warn('⚠️  Start Redis with: docker run -d -p 6379:6379 redis:7-alpine');
+            return; // Exit early in development
         } else {
             // In production, Redis is required
             throw error;
         }
     }
+
+    // Initialize Bull queue
+    let smsQueue;
+    try {
+        smsQueue = getSMSQueue();
+        logger.info('Bull queue initialized');
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error('Failed to initialize Bull queue', { error: errorMessage });
+        if (!isDevelopment) throw error;
+    }
+
+    // Initialize core services (these should always work)
+    const multipassService = new MultipassService();
+    const customerService = new CustomerService();
+    const otpService = new OTPService(redis);
+    
+    // Initialize SMS service
+    let smsService: SMSService;
+    try {
+        if (config.sms.smsTo.apiKey && config.sms.smsTo.senderId) {
+            const smsToProvider = new SmsToProvider(
+                config.sms.smsTo.apiKey,
+                config.sms.smsTo.senderId
+            );
+            smsService = new SMSService([smsToProvider], redis);
+            logger.info('SMS service initialized with sms.to provider');
+        } else {
+            // Create SMS service with empty providers array
+            smsService = new SMSService([], redis);
+            logger.warn('⚠️  SMS service initialized without providers (SMS features disabled)');
+            logger.warn('⚠️  Set SMS_TO_API_KEY and SMS_TO_SENDER_ID in .env to enable SMS');
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error('Failed to initialize SMS service', { error: errorMessage });
+        // Create fallback SMS service
+        smsService = new SMSService([], redis);
+        logger.warn('⚠️  SMS service running in fallback mode (no providers)');
+    }
+    
+    // Initialize OAuth service
+    const oauthService = new OAuthService();
+    try {
+        if (config.oauth.google.clientId && config.oauth.google.clientSecret) {
+            const googleProvider = new GoogleOAuthProvider(
+                config.oauth.google.clientId,
+                config.oauth.google.clientSecret
+            );
+            oauthService.registerProvider('google', googleProvider);
+            logger.info('OAuth service initialized with Google provider');
+        } else {
+            logger.warn('⚠️  Google OAuth not configured (OAuth features disabled)');
+            logger.warn('⚠️  Set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in .env to enable Google OAuth');
+        }
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error('Failed to initialize Google OAuth provider', { error: errorMessage });
+        logger.warn('⚠️  Google OAuth will not be available');
+    }
+    
+    // Initialize Auth service
+    const authService = new AuthService(
+        multipassService,
+        customerService,
+        otpService,
+        smsService,
+        oauthService,
+        smsQueue
+    );
+    
+    // Initialize Order service
+    const orderService = new OrderService(redis, otpService, smsService);
+    
+    // Initialize Settings service
+    const settingsService = new SettingsService(redis);
+
+    // Register routes
+    const authRouter = createAuthRouter(authService, otpService, smsService);
+    app.use('/api/auth', authRouter);
+    
+    const webhookRouter = createWebhookRouter(orderService, smsService);
+    app.use('/api/webhooks', webhookRouter);
+    
+    const adminRouter = createAdminRouter(settingsService);
+    app.use('/api/admin', adminRouter);
+    
+    // Register 404 handler (after all routes)
+    app.use(notFoundHandler);
+    
+    // Register global error handler (must be last)
+    app.use(errorHandler);
+    
+    logger.info('Services and routes initialized');
+    logger.info('Infrastructure initialization complete');
 };
 
 // Graceful shutdown
