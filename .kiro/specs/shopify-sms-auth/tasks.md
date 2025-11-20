@@ -48,7 +48,7 @@
   - **Property 10: OAuth user profile normalization**
   - **Validates: Requirements 14.4**
 
-- [-] 4. Implement core services
+- [x] 4. Implement core services
 - [x] 4.1 Implement OTPService
   - Generate 6-digit OTP codes
   - Store OTP in Redis with 5-minute TTL
@@ -296,8 +296,8 @@
   - **Property 20: Request logging completeness**
   - **Validates: Requirements 7.5**
 
-- [-] 10. Implement order confirmation feature
-- [-] 10.1 Implement order OTP generation
+- [x] 10. Implement order confirmation feature
+- [x] 10.1 Implement order OTP generation
   - Generate unique OTP for order
   - Store OTP with order ID in Redis (10 min TTL)
   - Queue SMS with order number
@@ -322,117 +322,139 @@
   - Trigger OTP generation for orders requiring confirmation
   - _Requirements: 8.1_
 
-- [ ] 11. Create admin UI for app configuration
-- [ ] 11.1 Set up React admin panel with Shopify Polaris
-  - Create admin page component
-  - Set up Shopify App Bridge
-  - Implement navigation
+- [x] 11. Checkpoint - Backend implementation complete
+  - All backend services, routes, and tests are implemented
+  - Core authentication flows (SMS, email, OAuth) are working
+  - Order confirmation feature is implemented
+  - All property-based tests are passing
+
+- [ ] 12. Create admin UI for app configuration
+- [ ] 12.1 Set up React admin panel with Shopify Polaris
+  - Initialize React app in `admin/` directory
+  - Install @shopify/polaris and @shopify/app-bridge-react
+  - Create admin page component with Shopify App Bridge
+  - Set up routing and navigation
   - _Requirements: 12.1_
 
-- [ ] 11.2 Implement settings form
-  - Form for enabling/disabling auth methods (SMS, email, Google)
-  - Color picker for form customization
-  - Logo upload field
-  - Save button
+- [ ] 12.2 Implement settings form UI
+  - Create form for enabling/disabling auth methods (SMS, email, Google)
+  - Add color picker for form customization (primary color, button style)
+  - Add logo upload field with preview
+  - Add save button with loading state
   - _Requirements: 12.1, 12.4, 14.5_
 
-- [ ] 11.3 Implement settings API endpoints
-  - GET /api/admin/settings - fetch current settings from shop metafields
-  - PUT /api/admin/settings - save settings to shop metafields
+- [ ] 12.3 Implement settings API endpoints
+  - Create GET /api/admin/settings endpoint to fetch settings from shop metafields
+  - Create PUT /api/admin/settings endpoint to save settings to shop metafields
+  - Add validation for settings data
   - _Requirements: 12.2_
 
-- [ ] 11.4 Write property tests for settings
+- [ ] 12.4 Write property tests for settings persistence
   - **Property 27: Settings persistence**
   - **Property 28: Dynamic auth method availability**
   - **Validates: Requirements 12.2, 12.4**
 
-- [ ] 11.5 Implement real-time settings updates
+- [ ] 12.5 Implement real-time settings updates
   - Use Shopify App Bridge to detect settings changes
-  - Update UI without page reload
+  - Update admin UI without page reload when settings change
+  - Show success/error notifications
   - _Requirements: 12.5_
 
-- [ ] 11.6 Write property test for settings reactivity
-  - **Property 25: Settings reactivity** (note: this is a typo, should be a new property number)
-  - **Validates: Requirements 12.5**
-
-- [ ] 12. Create storefront App Extension
-- [ ] 12.1 Initialize App Extension
-  - Create checkout UI extension using Shopify CLI
+- [ ] 13. Create storefront App Extension
+- [ ] 13.1 Initialize App Extension
+  - Run `npm run shopify app generate extension` to create checkout UI extension
   - Configure extension in shopify.app.toml
+  - Set up extension build process
   - _Requirements: 11.4_
 
-- [ ] 12.2 Implement login form component
-  - Create form with phone, email, and OAuth options
-  - Fetch enabled methods from settings
-  - Apply custom styles from settings
-  - Handle form submission
+- [ ] 13.2 Implement login form component
+  - Create form with phone input, email/password inputs, and OAuth buttons
+  - Fetch enabled auth methods from settings API
+  - Apply custom styles (colors, logo) from settings
+  - Handle form submission and validation
   - _Requirements: 12.3, 12.4_
 
-- [ ] 12.3 Implement checkout interceptor
-  - Listen for checkout button click
-  - Check authentication status
-  - Show login form if not authenticated
-  - Check localStorage/cookies for session data
+- [ ] 13.3 Implement checkout interceptor
+  - Listen for checkout button click event
+  - Check authentication status before allowing checkout
+  - Show login form modal if user is not authenticated
+  - Check localStorage/cookies for existing session data
   - _Requirements: 15.1, 15.2_
 
-- [ ] 12.4 Implement session persistence
-  - Save session data to localStorage after successful auth
+- [ ] 13.4 Implement session persistence in extension
+  - Save session data to localStorage after successful authentication
   - Set secure cookies with session token
-  - Implement session expiration
+  - Implement session expiration (30 days)
+  - Auto-restore session on page load
   - _Requirements: 15.2, 15.3_
 
-- [ ] 12.5 Implement post-auth redirect
+- [ ] 13.5 Implement post-auth redirect flow
   - Redirect to checkout after successful authentication
-  - Preserve cart contents
-  - Pass return_to URL to Multipass
+  - Preserve cart contents during auth flow
+  - Pass return_to URL to Multipass for proper redirect
+  - Handle edge cases (empty cart, expired cart)
   - _Requirements: 15.5_
 
-- [ ] 12.6 Write property test for checkout redirect
+- [ ] 13.6 Write property test for checkout redirect
   - **Property 34: Post-auth checkout redirect**
   - **Validates: Requirements 15.5**
 
-- [ ] 13. Checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [ ] 14. Checkpoint - Frontend implementation complete
+  - Ensure all tests pass, ask the user if questions arise
+  - Admin UI is functional and can save/load settings
+  - Storefront extension displays login form correctly
+  - Checkout interception works properly
 
-- [ ] 14. Add secondary SMS provider support
-- [ ] 14.1 Implement TwilioProvider (or another provider)
-  - Implement ISMSProvider for Twilio API
+- [ ] 15. Add secondary SMS provider support
+- [ ] 15.1 Implement TwilioProvider
+  - Create TwilioProvider class implementing ISMSProvider
+  - Implement sendSMS method using Twilio API
+  - Implement checkDeliveryStatus method
+  - Implement handleWebhook for Twilio DLR format
   - Configure as secondary provider with priority 2
   - _Requirements: 13.4_
 
-- [ ] 14.2 Update SMSService configuration
-  - Load multiple providers from config
-  - Test fallback mechanism with both providers
+- [ ] 15.2 Update SMSService configuration
+  - Load multiple providers from environment config
+  - Test fallback mechanism with both sms.to and Twilio
+  - Verify provider rotation works correctly
   - _Requirements: 13.1, 13.2_
 
-- [ ] 15. Integration testing
-- [ ] 15.1 Write integration tests for full auth flows
-  - Test SMS authentication end-to-end
-  - Test email authentication end-to-end
-  - Test OAuth authentication end-to-end
-  - Test provider fallback
-  - Test rate limiting
-  - Test order confirmation flow
+- [ ] 16. Integration testing
+- [ ] 16.1 Write integration tests for full auth flows
+  - Test SMS authentication end-to-end (send OTP → verify → Multipass redirect)
+  - Test email authentication end-to-end (login → verify → Multipass redirect)
+  - Test OAuth authentication end-to-end (initiate → callback → Multipass redirect)
+  - Test SMS provider fallback (primary fails → secondary succeeds)
+  - Test rate limiting across multiple requests
+  - Test order confirmation flow (webhook → OTP → verify → status update)
 
-- [ ] 15.2 Write integration tests for admin UI
-  - Test settings save and load
-  - Test settings applied to storefront
+- [ ] 16.2 Write integration tests for admin UI
+  - Test settings save and load workflow
+  - Test settings changes reflected on storefront
+  - Test enabling/disabling auth methods
 
-- [ ] 16. Documentation and deployment preparation
-- [ ] 16.1 Write API documentation
-  - Document all API endpoints
-  - Include request/response examples
-  - Document error codes
+- [ ] 17. Documentation and deployment preparation
+- [ ] 17.1 Write API documentation
+  - Document all API endpoints with request/response examples
+  - Document authentication requirements
+  - Document error codes and messages
+  - Create Postman/OpenAPI collection
 
-- [ ] 16.2 Write deployment guide
-  - Document environment variables
-  - Document infrastructure requirements
-  - Document deployment steps
+- [ ] 17.2 Write deployment guide
+  - Document all environment variables with descriptions
+  - Document infrastructure requirements (Redis, Node.js version)
+  - Document deployment steps for production
+  - Document monitoring and logging setup
 
-- [ ] 16.3 Write user guide
-  - Document app installation process
-  - Document admin configuration
-  - Document customer experience
+- [ ] 17.3 Write user guide
+  - Document app installation process for merchants
+  - Document admin configuration steps with screenshots
+  - Document customer authentication experience
+  - Create troubleshooting guide
 
-- [ ] 17. Final checkpoint - Ensure all tests pass
-  - Ensure all tests pass, ask the user if questions arise.
+- [ ] 18. Final checkpoint - Production readiness
+  - Ensure all tests pass (unit, property-based, integration)
+  - Verify all documentation is complete
+  - Confirm all environment variables are documented
+  - Review security considerations

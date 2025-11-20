@@ -10,10 +10,12 @@ import { requestLogger } from './middleware/requestLogger.js';
 import { GoogleOAuthProvider } from './providers/GoogleOAuthProvider.js';
 import { SmsToProvider } from './providers/SmsToProvider.js';
 import { createAuthRouter } from './routes/auth.js';
+import { createWebhookRouter } from './routes/webhooks.js';
 import { AuthService } from './services/AuthService.js';
 import { CustomerService } from './services/CustomerService.js';
 import { MultipassService } from './services/MultipassService.js';
 import { OAuthService } from './services/OAuthService.js';
+import { OrderService } from './services/OrderService.js';
 import { OTPService } from './services/OTPService.js';
 import { SMSService } from './services/SMSService.js';
 
@@ -86,10 +88,16 @@ const initializeInfrastructure = async (): Promise<void> => {
             oauthService,
             smsQueue
         );
+        
+        // Initialize Order service
+        const orderService = new OrderService(redis, otpService, smsService);
 
         // Register routes
         const authRouter = createAuthRouter(authService, otpService, smsService);
         app.use('/api/auth', authRouter);
+        
+        const webhookRouter = createWebhookRouter(orderService, smsService);
+        app.use('/api/webhooks', webhookRouter);
         
         // Register 404 handler (after all routes)
         app.use(notFoundHandler);
