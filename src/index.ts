@@ -4,6 +4,7 @@ import { config } from './config/index.js';
 import { logger } from './config/logger.js';
 import { closeSMSQueue, getSMSQueue } from './config/queue.js';
 import { closeRedisClient, getRedisClient } from './config/redis.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 import { httpsEnforcement } from './middleware/httpsEnforcement.js';
 import { requestLogger } from './middleware/requestLogger.js';
 import { GoogleOAuthProvider } from './providers/GoogleOAuthProvider.js';
@@ -89,6 +90,12 @@ const initializeInfrastructure = async (): Promise<void> => {
         // Register routes
         const authRouter = createAuthRouter(authService, otpService, smsService);
         app.use('/api/auth', authRouter);
+        
+        // Register 404 handler (after all routes)
+        app.use(notFoundHandler);
+        
+        // Register global error handler (must be last)
+        app.use(errorHandler);
         
         logger.info('Services and routes initialized');
         logger.info('Infrastructure initialization complete');
