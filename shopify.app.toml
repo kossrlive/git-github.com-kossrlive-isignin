@@ -24,3 +24,9 @@ embedded = false
 [build]
 automatically_update_urls_on_dev = true
 dev_store_url = ""
+
+[[extensions]]
+type = "checkout_ui_extension"
+name = "Checkout Auth"
+handle = "checkout-auth"
+directory = "extensions/checkout-auth"

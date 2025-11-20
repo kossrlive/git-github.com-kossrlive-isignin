@@ -360,42 +360,42 @@
   - Show success/error notifications
   - _Requirements: 12.5_
 
-- [ ] 13. Create storefront App Extension
-- [ ] 13.1 Initialize App Extension
+- [x] 13. Create storefront App Extension
+- [x] 13.1 Initialize App Extension
   - Run `npm run shopify app generate extension` to create checkout UI extension
   - Configure extension in shopify.app.toml
   - Set up extension build process
   - _Requirements: 11.4_
 
-- [ ] 13.2 Implement login form component
+- [x] 13.2 Implement login form component
   - Create form with phone input, email/password inputs, and OAuth buttons
   - Fetch enabled auth methods from settings API
   - Apply custom styles (colors, logo) from settings
   - Handle form submission and validation
   - _Requirements: 12.3, 12.4_
 
-- [ ] 13.3 Implement checkout interceptor
+- [x] 13.3 Implement checkout interceptor
   - Listen for checkout button click event
   - Check authentication status before allowing checkout
   - Show login form modal if user is not authenticated
   - Check localStorage/cookies for existing session data
   - _Requirements: 15.1, 15.2_
 
-- [ ] 13.4 Implement session persistence in extension
+- [x] 13.4 Implement session persistence in extension
   - Save session data to localStorage after successful authentication
   - Set secure cookies with session token
   - Implement session expiration (30 days)
   - Auto-restore session on page load
   - _Requirements: 15.2, 15.3_
 
-- [ ] 13.5 Implement post-auth redirect flow
+- [x] 13.5 Implement post-auth redirect flow
   - Redirect to checkout after successful authentication
   - Preserve cart contents during auth flow
   - Pass return_to URL to Multipass for proper redirect
   - Handle edge cases (empty cart, expired cart)
   - _Requirements: 15.5_
 
-- [ ] 13.6 Write property test for checkout redirect
+- [x] 13.6 Write property test for checkout redirect
   - **Property 34: Post-auth checkout redirect**
   - **Validates: Requirements 15.5**
 

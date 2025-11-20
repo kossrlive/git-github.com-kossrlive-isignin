@@ -1,0 +1,16 @@
+api_version = "2024-01"
+
+[[extensions]]
+type = "ui_extension"
+name = "checkout-auth"
+handle = "checkout-auth"
+
+[[extensions.targeting]]
+target = "purchase.checkout.block.render"
+
+[[extensions.targeting]]
+target = "purchase.checkout.actions.render-before"
+
+[extensions.capabilities]
+network_access = true
+block_progress = true
