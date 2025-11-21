@@ -5,7 +5,7 @@
  */
 
 import type { Redis } from 'ioredis';
-import { logger } from '../config/logger.js';
+import { logger } from '../config/logger';
 
 // Default configuration values
 const DEFAULT_OTP_LENGTH = 6;
@@ -50,18 +50,26 @@ export class OTPService {
   }
 
   /**
-   * Store OTP in Redis with TTL
-   * Requirement 1.2: Store OTP in Redis with 5-minute TTL
+   * Store OTP in Redis with TTL and metadata
+   * Requirement 9.3: Store OTP with expiration, attempts, and created timestamp
    */
   async storeOTP(phone: string, otp: string, ttl: number = this.otpTTL): Promise<void> {
     const key = this.getOTPKey(phone);
     
     try {
-      await this.redis.setex(key, ttl, otp);
+      // Store OTP with metadata as JSON
+      const otpData = {
+        code: otp,
+        attempts: 0,
+        createdAt: Date.now(),
+      };
       
-      logger.info('OTP stored in Redis', {
+      await this.redis.setex(key, ttl, JSON.stringify(otpData));
+      
+      logger.info('OTP stored in Redis with metadata', {
         phone: this.maskPhone(phone),
-        ttl
+        ttl,
+        createdAt: otpData.createdAt,
       });
     } catch (error) {
       logger.error('Failed to store OTP in Redis', {
@@ -75,6 +83,7 @@ export class OTPService {
   /**
    * Verify OTP against stored value
    * Requirement 1.4: Verify OTP against stored value
+   * Requirement 9.3: Track attempts in OTP metadata
    */
   async verifyOTP(phone: string, otp: string): Promise<boolean> {
     // Check if phone is blocked
@@ -88,9 +97,9 @@ export class OTPService {
     const key = this.getOTPKey(phone);
     
     try {
-      const storedOTP = await this.redis.get(key);
+      const storedData = await this.redis.get(key);
       
-      if (!storedOTP) {
+      if (!storedData) {
         logger.warn('OTP not found or expired', {
           phone: this.maskPhone(phone)
         });
@@ -98,20 +107,42 @@ export class OTPService {
         return false;
       }
       
-      const isValid = storedOTP === otp;
+      // Parse OTP data from JSON
+      let otpData: { code: string; attempts: number; createdAt: number };
+      try {
+        otpData = JSON.parse(storedData);
+      } catch {
+        // Fallback for old format (plain string)
+        otpData = { code: storedData, attempts: 0, createdAt: Date.now() };
+      }
+      
+      const isValid = otpData.code === otp;
       
       if (isValid) {
         logger.info('OTP verified successfully', {
-          phone: this.maskPhone(phone)
+          phone: this.maskPhone(phone),
+          attempts: otpData.attempts,
+          ageMs: Date.now() - otpData.createdAt,
         });
         // Delete OTP after successful use (Requirement 6.4)
         await this.deleteOTP(phone);
         // Reset failed attempts counter
         await this.resetFailedAttempts(phone);
       } else {
+        // Increment attempts in metadata
+        otpData.attempts += 1;
+        
         logger.warn('Invalid OTP provided', {
-          phone: this.maskPhone(phone)
+          phone: this.maskPhone(phone),
+          attempts: otpData.attempts,
         });
+        
+        // Update OTP data with incremented attempts
+        const ttl = await this.redis.ttl(key);
+        if (ttl > 0) {
+          await this.redis.setex(key, ttl, JSON.stringify(otpData));
+        }
+        
         await this.incrementFailedAttempts(phone);
       }
       

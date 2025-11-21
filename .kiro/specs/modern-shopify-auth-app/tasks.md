@@ -169,8 +169,8 @@
     - **Property 21: Multipass URL Format**
     - **Validates: Requirements 8.1, 8.2, 8.3, 8.4**
 
-- [ ] 7. Implement rate limiting and security
-  - [ ] 7.1 Create rate limiting middleware
+- [x] 7. Implement rate limiting and security
+  - [x] 7.1 Create rate limiting middleware
     - Check request count per IP in Redis
     - Increment counter on each request
     - Return 429 if limit exceeded
@@ -182,7 +182,7 @@
     - **Property 23: Rate Limit Response Code**
     - **Validates: Requirements 9.1, 9.2**
   
-  - [ ] 7.3 Implement OTP storage with expiration
+  - [x] 7.3 Implement OTP storage with expiration
     - Store OTP in Redis with phone number as key
     - Set TTL to 5 minutes (300 seconds)
     - Include metadata (attempts, created timestamp)
@@ -192,7 +192,7 @@
     - **Property 24: OTP Storage With Expiration**
     - **Validates: Requirements 9.3**
   
-  - [ ] 7.5 Implement sensitive data masking in logs
+  - [x] 7.5 Implement sensitive data masking in logs
     - Create logging utility that masks phone numbers
     - Mask email addresses in logs
     - Apply masking to all log statements
@@ -202,7 +202,7 @@
     - **Property 25: Sensitive Data Masking in Logs**
     - **Validates: Requirements 9.4**
   
-  - [ ] 7.7 Implement webhook HMAC validation
+  - [x] 7.7 Implement webhook HMAC validation
     - Create middleware to validate HMAC signatures
     - Use app client secret for validation
     - Reject requests with invalid signatures
