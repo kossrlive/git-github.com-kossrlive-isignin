@@ -24,11 +24,17 @@ export function initializeSMSWorker(): void {
   logger.info('Initializing SMS worker');
 
   // Process SMS jobs
+  // Requirement 10.5: Jobs will be retried up to 3 times with exponential backoff
   queue.process(async (job: Job<SMSJobData>) => {
+    const attemptNumber = job.attemptsMade + 1;
+    const isRetry = attemptNumber > 1;
+    
     logger.info('Processing SMS job', {
       jobId: job.id,
       phone: maskPhone(job.data.phone),
-      attempt: job.attemptsMade + 1
+      attempt: attemptNumber,
+      maxAttempts: job.opts.attempts || 3,
+      isRetry
     });
 
     try {
@@ -42,14 +48,23 @@ export function initializeSMSWorker(): void {
       // Create SMS service
       const smsService = new SMSService(providers, redis);
 
-      // Send SMS
+      // Send SMS with attempt number for tracking
       const result = await smsService.sendSMS({
         to: job.data.phone,
         message: job.data.message,
         callbackUrl: job.data.callbackUrl
-      }, job.data.attemptNumber || 0);
+      }, attemptNumber);
 
       if (!result.success) {
+        // Log failure with retry information
+        const willRetry = attemptNumber < (job.opts.attempts || 3);
+        logger.error('SMS send failed', {
+          jobId: job.id,
+          phone: maskPhone(job.data.phone),
+          attempt: attemptNumber,
+          willRetry,
+          error: result.error
+        });
         throw new Error(result.error || 'SMS send failed');
       }
 
@@ -57,14 +72,23 @@ export function initializeSMSWorker(): void {
         jobId: job.id,
         phone: maskPhone(job.data.phone),
         messageId: result.messageId,
-        provider: result.provider
+        provider: result.provider,
+        attempt: attemptNumber,
+        wasRetry: isRetry
       });
 
       return result;
     } catch (error) {
+      const willRetry = attemptNumber < (job.opts.attempts || 3);
+      const nextRetryDelay = willRetry ? Math.pow(2, attemptNumber - 1) * 1000 : null;
+      
       logger.error('SMS job failed', {
         jobId: job.id,
         phone: maskPhone(job.data.phone),
+        attempt: attemptNumber,
+        maxAttempts: job.opts.attempts || 3,
+        willRetry,
+        nextRetryDelay: nextRetryDelay ? `${nextRetryDelay}ms` : null,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       throw error;

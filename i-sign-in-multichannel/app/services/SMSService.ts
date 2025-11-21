@@ -59,6 +59,9 @@ export class SMSService {
   /**
    * Send SMS with fallback logic
    * Requirement 13.2: Automatically switch to backup provider on failure
+   * Requirement 10.1: Always try primary provider first
+   * Requirement 10.2: On failure, automatically try secondary provider
+   * Requirement 10.3: Log errors from both providers if both fail
    */
   async sendWithFallback(params: SendSMSParams, attemptNumber: number = 0): Promise<SendSMSResult> {
     // Check if any providers are configured
@@ -73,8 +76,9 @@ export class SMSService {
     }
 
     let lastError: string | undefined;
+    const providerErrors: Array<{ provider: string; error: string }> = [];
 
-    // Try each provider in priority order
+    // Try each provider in priority order (Requirement 10.1: primary first)
     for (const provider of this.providers) {
       try {
         logger.info('Attempting to send SMS', {
@@ -90,6 +94,9 @@ export class SMSService {
           // Track delivery in Redis (Requirement 5.1)
           await this.trackDelivery(result.messageId, provider.name, params.to);
 
+          // Track provider usage for analytics
+          await this.trackProviderUsage(provider.name, 'success', params.to);
+
           logger.info('SMS sent successfully', {
             provider: provider.name,
             messageId: result.messageId,
@@ -98,8 +105,10 @@ export class SMSService {
 
           return result;
         } else {
-          // Provider returned failure, try next provider
+          // Provider returned failure, try next provider (Requirement 10.2)
           lastError = result.error;
+          providerErrors.push({ provider: provider.name, error: result.error || 'Unknown error' });
+          
           logger.warn('SMS provider returned failure, trying next provider', {
             provider: provider.name,
             error: result.error,
@@ -108,8 +117,10 @@ export class SMSService {
           continue;
         }
       } catch (error) {
-        // Exception occurred, try next provider
+        // Exception occurred, try next provider (Requirement 10.2)
         lastError = error instanceof Error ? error.message : 'Unknown error';
+        providerErrors.push({ provider: provider.name, error: lastError });
+        
         logger.error('SMS provider threw exception, trying next provider', {
           provider: provider.name,
           error: lastError,
@@ -119,12 +130,16 @@ export class SMSService {
       }
     }
 
-    // All providers failed
+    // All providers failed (Requirement 10.3: log errors from all providers)
     logger.error('All SMS providers failed', {
       to: this.maskPhone(params.to),
       providersAttempted: this.providers.length,
+      providerErrors, // Log all provider errors
       lastError
     });
+
+    // Track failure for analytics
+    await this.trackProviderUsage('all-failed', 'failure', params.to);
 
     return {
       success: false,
@@ -338,6 +353,75 @@ export class SMSService {
       });
       return undefined;
     }
+  }
+
+  /**
+   * Track provider usage for analytics
+   * Stores which provider was used and whether it succeeded or failed
+   */
+  private async trackProviderUsage(provider: string, status: 'success' | 'failure', phone: string): Promise<void> {
+    const key = `sms:analytics:provider:${provider}:${status}`;
+    const dailyKey = `sms:analytics:provider:${provider}:${status}:${new Date().toISOString().split('T')[0]}`;
+    
+    try {
+      // Increment overall counter
+      await this.redis.incr(key);
+      
+      // Increment daily counter with 7-day TTL
+      await this.redis.incr(dailyKey);
+      await this.redis.expire(dailyKey, 604800); // 7 days
+      
+      logger.debug('Provider usage tracked', {
+        provider,
+        status,
+        phone: this.maskPhone(phone)
+      });
+    } catch (error) {
+      logger.error('Failed to track provider usage', {
+        provider,
+        status,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      // Don't throw - analytics failure shouldn't fail the SMS send
+    }
+  }
+
+  /**
+   * Get provider usage statistics
+   */
+  async getProviderStats(): Promise<Record<string, { success: number; failure: number }>> {
+    const stats: Record<string, { success: number; failure: number }> = {};
+    
+    try {
+      for (const provider of this.providers) {
+        const successKey = `sms:analytics:provider:${provider.name}:success`;
+        const failureKey = `sms:analytics:provider:${provider.name}:failure`;
+        
+        const [success, failure] = await Promise.all([
+          this.redis.get(successKey),
+          this.redis.get(failureKey)
+        ]);
+        
+        stats[provider.name] = {
+          success: parseInt(success || '0', 10),
+          failure: parseInt(failure || '0', 10)
+        };
+      }
+      
+      // Also get all-failed stats
+      const allFailedKey = 'sms:analytics:provider:all-failed:failure';
+      const allFailed = await this.redis.get(allFailedKey);
+      stats['all-failed'] = {
+        success: 0,
+        failure: parseInt(allFailed || '0', 10)
+      };
+    } catch (error) {
+      logger.error('Failed to get provider stats', {
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+    
+    return stats;
   }
 
   /**

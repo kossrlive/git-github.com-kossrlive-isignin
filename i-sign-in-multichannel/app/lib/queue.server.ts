@@ -31,12 +31,15 @@ export function getSMSQueue(): Queue<SMSJobData> {
   logger.info('Initializing SMS queue');
 
   try {
+    // Requirement 10.5: Configure Bull queue with retry settings
+    // - Set retry attempts to 3
+    // - Use exponential backoff (1s, 2s, 4s)
     smsQueue = new Bull<SMSJobData>('sms-queue', redisUrl, {
       defaultJobOptions: {
-        attempts: 3,
+        attempts: 3, // Requirement 10.5: Retry up to 3 times
         backoff: {
-          type: 'exponential',
-          delay: 1000 // Start with 1 second, then 2s, 4s
+          type: 'exponential', // Requirement 10.5: Exponential backoff
+          delay: 1000 // Requirement 10.5: Start with 1s, then 2s, 4s
         },
         removeOnComplete: 100, // Keep last 100 completed jobs
         removeOnFail: 500 // Keep last 500 failed jobs
