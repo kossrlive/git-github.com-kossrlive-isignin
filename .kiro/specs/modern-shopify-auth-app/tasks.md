@@ -8,7 +8,7 @@
   - Configure app name and basic settings
   - _Requirements: 1.1, 1.2_
 
-- [ ] 2. Set up Prisma database schema and migrations
+- [-] 2. Set up Prisma database schema and migrations
   - Create Prisma schema with Shop, ShopSettings, and Analytics models
   - Configure database connection (PostgreSQL or SQLite)
   - Run initial migration

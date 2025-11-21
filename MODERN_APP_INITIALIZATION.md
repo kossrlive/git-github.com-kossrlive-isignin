@@ -86,3 +86,5 @@
 - Existing services in `src/` remain untouched and will be migrated in Task 3
 - The app is configured but not yet deployed or running
 - Database schema needs to be updated before running the app
+- Removed nested Git repository to allow tracking by main repository
+- Added `.gitignore` to exclude node_modules and build artifacts
