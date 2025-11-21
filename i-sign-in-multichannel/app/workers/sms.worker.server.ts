@@ -3,6 +3,7 @@
  * Processes SMS jobs from the Bull queue
  */
 
+import prisma from 'app/db.server.js';
 import type { Job } from 'bull';
 import { logger } from '../config/logger.js';
 import type { SMSJobData } from '../lib/queue.server.js';
@@ -65,6 +66,30 @@ export function initializeSMSWorker(): void {
           willRetry,
           error: result.error
         });
+        
+        // Log analytics event for SMS failure
+        try {
+          const shop = await getShopFromJobData(job.data);
+          if (shop) {
+            await prisma.analytics.create({
+              data: {
+                shopId: shop.id,
+                eventType: 'sms_failed',
+                method: 'sms',
+                metadata: JSON.stringify({
+                  provider: result.provider || 'unknown',
+                  error: result.error,
+                  attempt: attemptNumber,
+                }),
+              },
+            });
+          }
+        } catch (analyticsError) {
+          logger.error('Failed to log SMS failure analytics', {
+            error: analyticsError instanceof Error ? analyticsError.message : 'Unknown error',
+          });
+        }
+        
         throw new Error(result.error || 'SMS send failed');
       }
 
@@ -76,6 +101,30 @@ export function initializeSMSWorker(): void {
         attempt: attemptNumber,
         wasRetry: isRetry
       });
+
+      // Log analytics event for SMS success
+      try {
+        const shop = await getShopFromJobData(job.data);
+        if (shop) {
+          await prisma.analytics.create({
+            data: {
+              shopId: shop.id,
+              eventType: 'sms_sent',
+              method: 'sms',
+              metadata: JSON.stringify({
+                provider: result.provider,
+                messageId: result.messageId,
+                attempt: attemptNumber,
+                wasRetry: isRetry,
+              }),
+            },
+          });
+        }
+      } catch (analyticsError) {
+        logger.error('Failed to log SMS success analytics', {
+          error: analyticsError instanceof Error ? analyticsError.message : 'Unknown error',
+        });
+      }
 
       return result;
     } catch (error) {
@@ -142,6 +191,51 @@ function initializeSMSProviders(): ISMSProvider[] {
   }
 
   return providers;
+}
+
+/**
+ * Get shop record from job data
+ * Extracts shop domain from callback URL or uses default
+ */
+async function getShopFromJobData(jobData: SMSJobData) {
+  try {
+    // Try to extract shop domain from callback URL
+    let shopDomain: string | null = null;
+    
+    if (jobData.callbackUrl) {
+      const url = new URL(jobData.callbackUrl);
+      // Assuming callback URL contains shop domain as a query parameter or in the path
+      shopDomain = url.searchParams.get('shop') || url.hostname;
+    }
+    
+    // If we couldn't extract shop domain, try to get the first shop
+    if (!shopDomain) {
+      const firstShop = await prisma.shop.findFirst();
+      return firstShop;
+    }
+    
+    // Find or create shop record
+    let shop = await prisma.shop.findUnique({
+      where: { domain: shopDomain },
+    });
+    
+    if (!shop) {
+      // Create shop record if it doesn't exist
+      shop = await prisma.shop.create({
+        data: {
+          domain: shopDomain,
+          accessToken: '', // Will be updated during OAuth
+        },
+      });
+    }
+    
+    return shop;
+  } catch (error) {
+    logger.error('Failed to get shop from job data', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+    return null;
+  }
 }
 
 /**

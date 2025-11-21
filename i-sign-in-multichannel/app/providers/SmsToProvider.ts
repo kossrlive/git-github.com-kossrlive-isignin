@@ -3,9 +3,10 @@
  * Implements ISMSProvider for sms.to API
  */
 
-import axios, { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
+import axios from 'axios';
 import { logger } from '../config/logger.js';
-import {
+import type {
     DeliveryReceipt,
     DeliveryStatus,
     DeliveryStatusType,
@@ -185,6 +186,57 @@ export class SmsToProvider implements ISMSProvider {
     }
   }
   
+  async getBalance(): Promise<import('./ISMSProvider.js').BalanceInfo> {
+    try {
+      logger.info('Fetching account balance from sms.to', {
+        provider: this.name
+      });
+      
+      // SMS.to balance endpoint
+      const response = await axios.get(
+        `${this.apiBaseUrl}/balance`,
+        {
+          headers: {
+            'Authorization': `Bearer ${this.apiKey}`
+          },
+          timeout: 5000
+        }
+      );
+      
+      // SMS.to typically returns balance in credits
+      const balance = parseFloat(response.data.balance || response.data.credits || 0);
+      const currency = response.data.currency || 'Credits';
+      
+      logger.info('Successfully fetched sms.to balance', {
+        provider: this.name,
+        balance,
+        currency
+      });
+      
+      return {
+        balance,
+        currency,
+        formattedBalance: `${balance.toFixed(2)} ${currency}`
+      };
+      
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      
+      logger.error('Failed to fetch balance from sms.to', {
+        provider: this.name,
+        error: axiosError.message,
+        statusCode: axiosError.response?.status
+      });
+      
+      // Return zero balance on error
+      return {
+        balance: 0,
+        currency: 'Credits',
+        formattedBalance: 'N/A'
+      };
+    }
+  }
+
   private mapStatusFromApi(apiStatus: string): DeliveryStatusType {
     const statusLower = (apiStatus || '').toLowerCase();
     

@@ -33,6 +33,12 @@ export interface DeliveryReceipt {
   failureReason?: string;
 }
 
+export interface BalanceInfo {
+  balance: number;
+  currency: string;
+  formattedBalance: string;
+}
+
 export interface ISMSProvider {
   readonly name: string;
   readonly priority: number;
@@ -40,4 +46,5 @@ export interface ISMSProvider {
   sendSMS(params: SendSMSParams): Promise<SendSMSResult>;
   checkDeliveryStatus(messageId: string): Promise<DeliveryStatus>;
   handleWebhook(payload: any): DeliveryReceipt;
+  getBalance(): Promise<BalanceInfo>;
 }

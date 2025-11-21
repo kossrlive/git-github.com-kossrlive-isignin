@@ -3,14 +3,16 @@ import { json } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
-    Badge,
-    BlockStack,
-    Card,
-    InlineStack,
-    Layout,
-    Page,
-    Text,
+  Badge,
+  BlockStack,
+  Card,
+  InlineStack,
+  Layout,
+  Page,
+  Text,
 } from "@shopify/polaris";
+import type { ISMSProvider } from "app/providers";
+import { SmsToProvider, TwilioProvider } from "app/providers";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 
@@ -25,6 +27,14 @@ interface AnalyticsStats {
   };
   successRate: number;
   smsDeliveryRate: number;
+  smsProviderStats: {
+    [provider: string]: {
+      sent: number;
+      failed: number;
+      deliveryRate: number;
+      balance?: string;
+    };
+  };
   recentActivity: Array<{
     id: string;
     eventType: string;
@@ -37,9 +47,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
-  // Get or create shop record
+  // Get or create shop record with settings
   let shopRecord = await prisma.shop.findUnique({
     where: { domain: shop },
+    include: { settings: true },
   });
 
   if (!shopRecord) {
@@ -48,6 +59,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
         domain: shop,
         accessToken: session.accessToken || "",
       },
+      include: { settings: true },
     });
   }
 
@@ -83,6 +95,98 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const smsDeliveryRate =
     totalSms > 0 ? (smsSent.length / totalSms) * 100 : 0;
 
+  // Calculate SMS delivery rate by provider
+  const smsProviderStats: {
+    [provider: string]: { sent: number; failed: number; deliveryRate: number };
+  } = {};
+
+  // Process SMS sent events
+  smsSent.forEach((event) => {
+    try {
+      const metadata = event.metadata ? JSON.parse(event.metadata) : {};
+      const provider = metadata.provider || "unknown";
+      
+      if (!smsProviderStats[provider]) {
+        smsProviderStats[provider] = { sent: 0, failed: 0, deliveryRate: 0 };
+      }
+      smsProviderStats[provider].sent++;
+    } catch (e) {
+      // Handle invalid JSON
+    }
+  });
+
+  // Process SMS failed events
+  smsFailed.forEach((event) => {
+    try {
+      const metadata = event.metadata ? JSON.parse(event.metadata) : {};
+      const provider = metadata.provider || "unknown";
+      
+      if (!smsProviderStats[provider]) {
+        smsProviderStats[provider] = { sent: 0, failed: 0, deliveryRate: 0 };
+      }
+      smsProviderStats[provider].failed++;
+    } catch (e) {
+      // Handle invalid JSON
+    }
+  });
+
+  // Calculate delivery rates for each provider
+  Object.keys(smsProviderStats).forEach((provider) => {
+    const stats = smsProviderStats[provider];
+    const total = stats.sent + stats.failed;
+    stats.deliveryRate = total > 0 ? (stats.sent / total) * 100 : 0;
+  });
+
+  // Fetch balances from SMS providers
+  const providers: ISMSProvider[] = [];
+  
+  // Initialize SMS.to provider if configured
+  if (shopRecord.settings?.smsToApiKey && shopRecord.settings?.smsToSenderId) {
+    try {
+      providers.push(new SmsToProvider(
+        shopRecord.settings.smsToApiKey,
+        shopRecord.settings.smsToSenderId
+      ));
+    } catch (e) {
+      // Provider initialization failed
+    }
+  }
+  
+  // Initialize Twilio provider if configured
+  if (shopRecord.settings?.twilioAccountSid && shopRecord.settings?.twilioAuthToken && shopRecord.settings?.twilioFromNumber) {
+    try {
+      providers.push(new TwilioProvider(
+        shopRecord.settings.twilioAccountSid,
+        shopRecord.settings.twilioAuthToken,
+        shopRecord.settings.twilioFromNumber
+      ));
+    } catch (e) {
+      // Provider initialization failed
+    }
+  }
+
+  // Fetch balance for each provider
+  await Promise.all(
+    providers.map(async (provider) => {
+      try {
+        const balanceInfo = await provider.getBalance();
+        if (smsProviderStats[provider.name]) {
+          smsProviderStats[provider.name].balance = balanceInfo.formattedBalance;
+        } else {
+          // Create entry even if no SMS data yet
+          smsProviderStats[provider.name] = {
+            sent: 0,
+            failed: 0,
+            deliveryRate: 0,
+            balance: balanceInfo.formattedBalance
+          };
+        }
+      } catch (e) {
+        // Balance fetch failed, skip
+      }
+    })
+  );
+
   const authMethodBreakdown = {
     sms: authSuccesses.filter((a) => a.method === "sms").length,
     email: authSuccesses.filter((a) => a.method === "email").length,
@@ -103,6 +207,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     authMethodBreakdown,
     successRate,
     smsDeliveryRate,
+    smsProviderStats,
     recentActivity,
   };
 
@@ -246,6 +351,72 @@ export default function Index() {
                       </Badge>
                     </InlineStack>
                   </BlockStack>
+                </BlockStack>
+              </Card>
+
+              <Card>
+                <BlockStack gap="400">
+                  <Text as="h3" variant="headingMd">
+                    SMS Delivery by Provider
+                  </Text>
+                  {Object.keys(stats.smsProviderStats).length > 0 ? (
+                    <BlockStack gap="300">
+                      {Object.entries(stats.smsProviderStats).map(
+                        ([provider, providerStats]) => (
+                          <Card key={provider} background="bg-surface-secondary">
+                            <BlockStack gap="200">
+                              <InlineStack align="space-between">
+                                <Text as="span" variant="bodyMd" fontWeight="semibold">
+                                  {provider === "sms.to" ? "SMS.to" : provider === "twilio" ? "Twilio" : provider}
+                                </Text>
+                                <Badge
+                                  tone={
+                                    providerStats.deliveryRate >= 95
+                                      ? "success"
+                                      : providerStats.deliveryRate >= 80
+                                      ? "attention"
+                                      : "critical"
+                                  }
+                                >
+                                  {formatPercentage(providerStats.deliveryRate)} delivery rate
+                                </Badge>
+                              </InlineStack>
+                              <InlineStack gap="400">
+                                <Text as="span" variant="bodySm" tone="subdued">
+                                  Sent: {providerStats.sent}
+                                </Text>
+                                <Text as="span" variant="bodySm" tone="subdued">
+                                  Failed: {providerStats.failed}
+                                </Text>
+                                <Text as="span" variant="bodySm" tone="subdued">
+                                  Total: {providerStats.sent + providerStats.failed}
+                                </Text>
+                              </InlineStack>
+                              {providerStats.balance && (
+                                <InlineStack align="space-between">
+                                  <Text as="span" variant="bodySm" fontWeight="medium">
+                                    Balance:
+                                  </Text>
+                                  <Text as="span" variant="bodySm" fontWeight="semibold">
+                                    {providerStats.balance}
+                                  </Text>
+                                </InlineStack>
+                              )}
+                            </BlockStack>
+                          </Card>
+                        )
+                      )}
+                    </BlockStack>
+                  ) : (
+                    <BlockStack gap="200">
+                      <Text as="p" variant="bodyMd" tone="subdued">
+                        No SMS data available yet. Provider statistics will appear here once SMS messages are sent.
+                      </Text>
+                      <Text as="p" variant="bodySm" tone="subdued">
+                        Configure your SMS providers in Settings to see account balances and start sending messages.
+                      </Text>
+                    </BlockStack>
+                  )}
                 </BlockStack>
               </Card>
 

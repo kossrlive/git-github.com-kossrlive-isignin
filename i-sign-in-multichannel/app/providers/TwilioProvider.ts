@@ -4,9 +4,10 @@
  * Configured as secondary provider with priority 2
  */
 
-import axios, { AxiosError } from 'axios';
+import type { AxiosError } from 'axios';
+import axios from 'axios';
 import { logger } from '../config/logger.js';
-import {
+import type {
     DeliveryReceipt,
     DeliveryStatus,
     DeliveryStatusType,
@@ -213,6 +214,56 @@ export class TwilioProvider implements ISMSProvider {
     }
   }
   
+  async getBalance(): Promise<import('./ISMSProvider.js').BalanceInfo> {
+    try {
+      logger.info('Fetching account balance from Twilio', {
+        provider: this.name
+      });
+      
+      const response = await axios.get(
+        `${this.apiBaseUrl}/Balance.json`,
+        {
+          auth: {
+            username: this.accountSid,
+            password: this.authToken
+          },
+          timeout: 5000
+        }
+      );
+      
+      const balance = parseFloat(response.data.balance);
+      const currency = response.data.currency || 'USD';
+      
+      logger.info('Successfully fetched Twilio balance', {
+        provider: this.name,
+        balance,
+        currency
+      });
+      
+      return {
+        balance,
+        currency,
+        formattedBalance: `${currency} ${balance.toFixed(2)}`
+      };
+      
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      
+      logger.error('Failed to fetch balance from Twilio', {
+        provider: this.name,
+        error: axiosError.message,
+        statusCode: axiosError.response?.status
+      });
+      
+      // Return zero balance on error
+      return {
+        balance: 0,
+        currency: 'USD',
+        formattedBalance: 'N/A'
+      };
+    }
+  }
+
   /**
    * Map Twilio status to our standard status types
    * Twilio statuses: queued, sending, sent, delivered, undelivered, failed
