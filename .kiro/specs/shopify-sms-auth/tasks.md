@@ -420,8 +420,8 @@
   - Verify provider rotation works correctly
   - _Requirements: 13.1, 13.2_
 
-- [ ] 16. Integration testing
-- [ ] 16.1 Write integration tests for full auth flows
+- [x] 16. Integration testing
+- [x] 16.1 Write integration tests for full auth flows
   - Test SMS authentication end-to-end (send OTP → verify → Multipass redirect)
   - Test email authentication end-to-end (login → verify → Multipass redirect)
   - Test OAuth authentication end-to-end (initiate → callback → Multipass redirect)
@@ -429,7 +429,7 @@
   - Test rate limiting across multiple requests
   - Test order confirmation flow (webhook → OTP → verify → status update)
 
-- [ ] 16.2 Write integration tests for admin UI
+- [x] 16.2 Write integration tests for admin UI
   - Test settings save and load workflow
   - Test settings changes reflected on storefront
   - Test enabling/disabling auth methods
