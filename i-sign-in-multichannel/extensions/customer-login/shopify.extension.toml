@@ -1,11 +1,6 @@
 # Learn more about configuring your theme app extension at https://shopify.dev/docs/apps/online-store/theme-app-extensions/configuration
 
-api_version = "2026-01"
+api_version = "2024-10"
 name = "customer-login"
+uid = "d8cc229f-e176-a6c5-eba0-af7276ee237a624b6030"
 type = "theme"
-
-[[extensions.blocks]]
-type = "app"
-name = "Customer Login"
-
-[extensions.settings]

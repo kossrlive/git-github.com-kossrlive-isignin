@@ -1,11 +1,16 @@
 # Learn more about configuring your checkout UI extension at https://shopify.dev/docs/api/checkout-ui-extensions/configuration
 
 api_version = "2024-10"
-name = "checkout-auth"
+
+[[extensions]]
+uid = "8ec8d5b5-37e9-3105-2423-54c6c4e04e2ecfc322fc"
 type = "ui_extension"
+name = "checkout-auth"
+handle = "checkout-auth"
 
 [[extensions.targeting]]
 target = "purchase.checkout.block.render"
+module = "./src/index.tsx"
 
 [extensions.capabilities]
 network_access = true
