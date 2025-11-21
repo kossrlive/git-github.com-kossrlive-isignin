@@ -84,8 +84,8 @@
     - _Requirements: 16.3_
 
 
-- [ ] 5. Create authentication API routes
-  - [ ] 5.1 Create SMS send OTP route (app/routes/api.auth.sms.send.ts)
+- [x] 5. Create authentication API routes
+  - [x] 5.1 Create SMS send OTP route (app/routes/api.auth.sms.send.ts)
     - Validate phone number format
     - Check rate limits
     - Generate OTP using OTPService
@@ -100,7 +100,7 @@
     - **Property 9: OTP Cooldown Enforcement**
     - **Validates: Requirements 5.1, 5.2, 5.3, 5.8**
   
-  - [ ] 5.3 Create SMS verify OTP route (app/routes/api.auth.sms.verify.ts)
+  - [x] 5.3 Create SMS verify OTP route (app/routes/api.auth.sms.verify.ts)
     - Validate OTP format
     - Verify OTP using OTPService
     - Check if OTP is expired
@@ -114,7 +114,7 @@
     - **Property 8: OTP Expiration Enforcement**
     - **Validates: Requirements 5.5, 5.6, 5.7**
   
-  - [ ] 5.5 Create email login route (app/routes/api.auth.email.login.ts)
+  - [x] 5.5 Create email login route (app/routes/api.auth.email.login.ts)
     - Validate email and password are non-empty
     - Check if customer exists using GraphQL
     - Verify password using bcrypt
@@ -132,14 +132,14 @@
     - **Property 15: Account Blocking After Failed Attempts**
     - **Validates: Requirements 6.1, 6.2, 6.3, 6.4, 6.5, 6.6**
   
-  - [ ] 5.7 Create OAuth initiation route (app/routes/api.auth.oauth.$provider.ts)
+  - [x] 5.7 Create OAuth initiation route (app/routes/api.auth.oauth.$provider.ts)
     - Get OAuth provider from URL params
     - Generate state token
     - Get OAuth authorization URL from provider
     - Redirect to OAuth provider
     - _Requirements: 7.1_
   
-  - [ ] 5.8 Create OAuth callback route (app/routes/api.auth.oauth.$provider.callback.ts)
+  - [x] 5.8 Create OAuth callback route (app/routes/api.auth.oauth.$provider.callback.ts)
     - Validate state token
     - Exchange authorization code for access token
     - Fetch user info from OAuth provider
