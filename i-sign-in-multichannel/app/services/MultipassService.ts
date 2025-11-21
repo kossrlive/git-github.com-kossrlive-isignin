@@ -1,12 +1,12 @@
 /**
  * Multipass Service
- * Handles Multipass token generation for Shopify Plus
- * Requirements: 4.1, 4.2, 4.3
+ * Handles Multipass token generation for Shopify Plus with multi-shop support
+ * Requirements: 8.1, 8.2, 8.3, 8.4
  */
 
 import type { PrismaClient } from '@prisma/client';
-import crypto from 'crypto';
-import { logger } from '../config/logger.js';
+import * as crypto from 'crypto';
+import { logger } from '../config/logger';
 
 export interface CustomerData {
   email: string;
@@ -28,17 +28,37 @@ export class MultipassService {
 
   /**
    * Get Multipass secret for a shop
+   * Fetches from shop settings in database
+   * Requirements: 8.2
    */
   private async getMultipassSecret(shopDomain: string): Promise<string> {
-    // In production, this would fetch the Multipass secret from shop settings
-    // For now, we'll use environment variable or throw error
-    const secret = process.env.SHOPIFY_MULTIPASS_SECRET;
-    
-    if (!secret) {
-      throw new Error(`Multipass secret not configured for shop: ${shopDomain}`);
+    try {
+      // Find shop by domain
+      const shop = await this.prisma.shop.findUnique({
+        where: { domain: shopDomain },
+        include: { settings: true }
+      });
+
+      if (!shop || !shop.settings) {
+        logger.error('Shop or settings not found', { shopDomain });
+        throw new Error(`Shop settings not found for: ${shopDomain}`);
+      }
+
+      const secret = shop.settings.multipassSecret;
+      
+      if (!secret) {
+        logger.error('Multipass secret not configured', { shopDomain });
+        throw new Error(`Multipass secret not configured for shop: ${shopDomain}`);
+      }
+      
+      return secret;
+    } catch (error) {
+      logger.error('Failed to get Multipass secret', {
+        shopDomain,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      throw error;
     }
-    
-    return secret;
   }
 
   /**
@@ -55,7 +75,8 @@ export class MultipassService {
 
   /**
    * Generate Multipass token with customer data
-   * Requirement 4.1: Generate Multipass tokens with customer data
+   * Requirements: 8.1, 8.2, 8.3
+   * Accepts shop parameter and fetches Multipass secret from shop settings
    */
   async generateToken(shopDomain: string, customer: CustomerData, returnTo?: string): Promise<string> {
     try {
@@ -96,7 +117,7 @@ export class MultipassService {
 
   /**
    * Encrypt and sign customer data using Multipass secret
-   * Requirement 4.2: Encrypt and sign tokens using Multipass secret
+   * Requirement 8.2: Encrypt token using AES-256-CBC (note: Shopify uses AES-128-CBC)
    */
   private encryptAndSign(data: object, encryptionKey: Buffer, signingKey: Buffer): string {
     try {
@@ -140,7 +161,7 @@ export class MultipassService {
 
   /**
    * Generate redirect URL with Multipass token
-   * Requirement 4.3: Generate redirect URL with token
+   * Requirement 8.4: Format Multipass URL
    */
   async generateMultipassUrl(shopDomain: string, customer: CustomerData, returnTo?: string): Promise<string> {
     const token = await this.generateToken(shopDomain, customer, returnTo);

@@ -37,6 +37,7 @@ export interface AuthSettings {
     buttonStyle: 'rounded' | 'square';
     logoUrl: string;
   };
+  multipassSecret?: string;
 }
 
 export class SettingsService {
@@ -91,7 +92,8 @@ export class SettingsService {
           primaryColor: settings.primaryColor,
           buttonStyle: settings.buttonStyle as 'rounded' | 'square',
           logoUrl: settings.logoUrl || ''
-        }
+        },
+        multipassSecret: settings.multipassSecret || undefined
       };
 
       logger.info('Settings retrieved successfully', { shopDomain });
@@ -146,6 +148,7 @@ export class SettingsService {
           primaryColor: settings.uiCustomization.primaryColor,
           buttonStyle: settings.uiCustomization.buttonStyle,
           logoUrl: settings.uiCustomization.logoUrl,
+          multipassSecret: settings.multipassSecret,
           smsAuthEnabled: settings.enabledMethods.sms,
           emailAuthEnabled: settings.enabledMethods.email,
           oauthAuthEnabled: settings.enabledMethods.google
@@ -163,6 +166,7 @@ export class SettingsService {
           primaryColor: settings.uiCustomization.primaryColor,
           buttonStyle: settings.uiCustomization.buttonStyle,
           logoUrl: settings.uiCustomization.logoUrl,
+          multipassSecret: settings.multipassSecret,
           smsAuthEnabled: settings.enabledMethods.sms,
           emailAuthEnabled: settings.enabledMethods.email,
           oauthAuthEnabled: settings.enabledMethods.google

@@ -153,8 +153,8 @@
     - **Property 17: OAuth Success Creates Multipass Token**
     - **Validates: Requirements 7.5, 7.6**
 
-- [ ] 6. Implement Multipass token generation
-  - [ ] 6.1 Update MultipassService for multi-shop support
+- [x] 6. Implement Multipass token generation
+  - [x] 6.1 Update MultipassService for multi-shop support
     - Accept shop parameter in all methods
     - Fetch Multipass secret from shop settings
     - Generate token with customer data

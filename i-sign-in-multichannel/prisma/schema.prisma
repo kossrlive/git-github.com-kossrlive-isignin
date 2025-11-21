@@ -71,6 +71,9 @@ model ShopSettings {
   buttonStyle  String  @default("rounded")
   logoUrl      String?
   
+  // Multipass Configuration
+  multipassSecret String?
+  
   // Feature Flags
   smsAuthEnabled           Boolean @default(true)
   emailAuthEnabled         Boolean @default(true)
