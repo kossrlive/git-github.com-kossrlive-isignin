@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. Initialize Modern Shopify App with React Router
+- [x] 1. Initialize Modern Shopify App with React Router
   - Run `npm init @shopify/app@latest` with React Router template
   - Select Polaris web components for UI
   - Select GraphQL for API
