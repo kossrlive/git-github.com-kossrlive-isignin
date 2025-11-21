@@ -3,15 +3,16 @@ import { json } from "@remix-run/node";
 import { useLoaderData, useNavigation, useSubmit } from "@remix-run/react";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import {
-    Banner,
-    BlockStack,
-    Button,
-    InlineStack,
-    Layout,
-    Page,
+  Banner,
+  BlockStack,
+  Button,
+  InlineStack,
+  Layout,
+  Page,
 } from "@shopify/polaris";
 import { useEffect, useState } from "react";
 import { AnalyticsDashboard } from "../components/AnalyticsDashboard";
+import { MultipassConfig } from "../components/MultipassConfig";
 import { OAuthProviderConfig } from "../components/OAuthProviderConfig";
 import { SMSProviderConfig } from "../components/SMSProviderConfig";
 import { UICustomization } from "../components/UICustomization";
@@ -152,6 +153,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       primaryColor: formData.get("primaryColor") as string,
       buttonStyle: formData.get("buttonStyle") as string,
       logoUrl: formData.get("logoUrl") as string,
+      multipassSecret: formData.get("multipassSecret") as string,
     };
 
     await prisma.shopSettings.upsert({
@@ -208,6 +210,7 @@ export default function Settings() {
     primaryColor: settings.primaryColor,
     buttonStyle: settings.buttonStyle,
     logoUrl: settings.logoUrl || "",
+    multipassSecret: settings.multipassSecret || "",
   });
 
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
@@ -254,6 +257,11 @@ export default function Settings() {
         <Layout>
           <Layout.Section>
             <BlockStack gap="500">
+              <MultipassConfig
+                multipassSecret={formData.multipassSecret}
+                onChange={handleChange}
+              />
+
               <SMSProviderConfig
                 smsPrimary={formData.smsPrimary}
                 smsToApiKey={formData.smsToApiKey}

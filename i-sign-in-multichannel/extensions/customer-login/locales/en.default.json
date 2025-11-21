@@ -1,0 +1,28 @@
+{
+    "customer_login": {
+        "title": "Sign In",
+        "sms_tab": "SMS",
+        "email_tab": "Email",
+        "oauth_tab": "Social",
+        "phone_label": "Phone Number",
+        "phone_placeholder": "+1234567890",
+        "send_code_button": "Send Code",
+        "sending_button": "Sending...",
+        "code_label": "Verification Code",
+        "code_placeholder": "123456",
+        "code_instruction": "Enter the 6-digit code sent to",
+        "verify_button": "Verify Code",
+        "verifying_button": "Verifying...",
+        "resend_button": "Resend Code",
+        "email_label": "Email Address",
+        "email_placeholder": "you@example.com",
+        "password_label": "Password",
+        "password_placeholder": "••••••••",
+        "signin_button": "Sign In",
+        "signing_in_button": "Signing in...",
+        "oauth_instruction": "Sign in with your social account",
+        "google_button": "Continue with Google",
+        "apple_button": "Continue with Apple",
+        "facebook_button": "Continue with Facebook"
+    }
+}

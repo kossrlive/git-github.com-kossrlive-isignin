@@ -1,6 +1,6 @@
 # Learn more about configuring your checkout UI extension at https://shopify.dev/docs/api/checkout-ui-extensions/configuration
 
-api_version = "2024-10"
+api_version = "2025-01"
 
 [[extensions]]
 uid = "8ec8d5b5-37e9-3105-2423-54c6c4e04e2ecfc322fc"
