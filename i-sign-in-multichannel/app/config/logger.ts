@@ -1,13 +1,17 @@
 /**
  * Logger configuration for the app
- * Includes automatic sensitive data masking
+ * Includes automatic sensitive data masking and severity levels
  * Requirement 9.4: Mask sensitive data in logs
+ * Requirement 16.5: Log errors with appropriate severity levels
  */
 
-type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'critical';
 
 interface LogContext {
   [key: string]: any;
+  severity?: LogLevel;
+  errorType?: string;
+  stack?: string;
 }
 
 class Logger {
@@ -139,6 +143,109 @@ class Logger {
 
   error(message: string, context?: LogContext): void {
     console.error(this.formatMessage('error', message, context));
+  }
+
+  /**
+   * Log critical errors that require immediate attention
+   * Use for system failures, data corruption, security breaches
+   * Requirement 16.5: Log errors with appropriate severity levels
+   */
+  critical(message: string, context?: LogContext): void {
+    console.error(this.formatMessage('critical', message, { ...context, severity: 'critical' }));
+  }
+
+  /**
+   * Log error with automatic severity detection based on error type
+   * Requirement 16.5: Log errors with appropriate severity levels
+   * 
+   * @param message - Error message
+   * @param error - Error object or context
+   * @param severity - Optional explicit severity level
+   */
+  logError(message: string, error?: Error | LogContext, severity?: LogLevel): void {
+    let context: LogContext = {};
+    let detectedSeverity: LogLevel = severity || 'error';
+
+    // If error is an Error object, extract details
+    if (error instanceof Error) {
+      context = {
+        errorType: error.name,
+        errorMessage: error.message,
+        stack: error.stack,
+      };
+
+      // Auto-detect severity based on error type
+      if (!severity) {
+        detectedSeverity = this.detectSeverity(error);
+      }
+    } else if (error) {
+      context = error;
+    }
+
+    // Add severity to context
+    context.severity = detectedSeverity;
+
+    // Log with appropriate level
+    switch (detectedSeverity) {
+      case 'critical':
+        this.critical(message, context);
+        break;
+      case 'error':
+        this.error(message, context);
+        break;
+      case 'warn':
+        this.warn(message, context);
+        break;
+      case 'info':
+        this.info(message, context);
+        break;
+      case 'debug':
+        this.debug(message, context);
+        break;
+    }
+  }
+
+  /**
+   * Detect severity level based on error type
+   * Requirement 16.5: Appropriate severity levels for different error types
+   */
+  private detectSeverity(error: Error): LogLevel {
+    const errorName = error.name.toLowerCase();
+    const errorMessage = error.message.toLowerCase();
+
+    // Critical errors - system failures, security issues
+    if (
+      errorName.includes('security') ||
+      errorName.includes('auth') ||
+      errorMessage.includes('database connection') ||
+      errorMessage.includes('redis connection') ||
+      errorMessage.includes('corruption') ||
+      errorMessage.includes('breach')
+    ) {
+      return 'critical';
+    }
+
+    // Errors - operational failures that need attention
+    if (
+      errorName.includes('error') ||
+      errorName.includes('exception') ||
+      errorMessage.includes('failed') ||
+      errorMessage.includes('unable to')
+    ) {
+      return 'error';
+    }
+
+    // Warnings - recoverable issues
+    if (
+      errorName.includes('warning') ||
+      errorMessage.includes('deprecated') ||
+      errorMessage.includes('retry')
+    ) {
+      return 'warn';
+    }
+
+    // Default to error
+    return 'error';
   }
 }
 

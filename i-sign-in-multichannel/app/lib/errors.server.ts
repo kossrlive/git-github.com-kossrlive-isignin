@@ -81,6 +81,53 @@ export const ErrorMessages = {
 } as const;
 
 /**
+ * Determine severity level based on HTTP status code and error code
+ * Requirement 16.5: Log errors with appropriate severity levels
+ */
+function determineSeverity(status: number, code: ErrorCode): 'info' | 'warn' | 'error' | 'critical' {
+  // Critical errors - system failures, security issues
+  if (
+    code === ErrorCode.DATABASE_ERROR ||
+    code === ErrorCode.REDIS_ERROR ||
+    status >= 500
+  ) {
+    return 'critical';
+  }
+
+  // Errors - operational failures
+  if (
+    code === ErrorCode.SMS_PROVIDER_ERROR ||
+    code === ErrorCode.SHOPIFY_API_ERROR ||
+    code === ErrorCode.OAUTH_PROVIDER_ERROR ||
+    status >= 400
+  ) {
+    return 'error';
+  }
+
+  // Warnings - rate limits, validation issues
+  if (
+    code === ErrorCode.RATE_LIMIT_EXCEEDED ||
+    code === ErrorCode.TOO_MANY_OTP_REQUESTS ||
+    code === ErrorCode.TOO_MANY_AUTH_ATTEMPTS ||
+    code === ErrorCode.ACCOUNT_BLOCKED
+  ) {
+    return 'warn';
+  }
+
+  // Info - validation errors, expected failures
+  if (
+    code === ErrorCode.VALIDATION_ERROR ||
+    code === ErrorCode.INVALID_OTP ||
+    code === ErrorCode.EXPIRED_OTP ||
+    code === ErrorCode.INVALID_CREDENTIALS
+  ) {
+    return 'info';
+  }
+
+  return 'error';
+}
+
+/**
  * Create a standardized error response
  * 
  * @param code - Error code from ErrorCode enum
@@ -99,8 +146,12 @@ export function createErrorResponse(
 ) {
   const id = requestId || crypto.randomUUID();
   
-  // Log error with details (but never expose stack traces to users)
-  logger.error("Error response created", {
+  // Determine appropriate severity level
+  // Requirement 16.5: Log errors with appropriate severity levels
+  const severity = determineSeverity(status, code);
+  
+  // Prepare context with metadata
+  const context = {
     requestId: id,
     code,
     message,
@@ -112,7 +163,11 @@ export function createErrorResponse(
       // Stack trace only in logs, never in response
       stack: details.stack,
     } : details,
-  });
+  };
+
+  // Log error with appropriate severity
+  // Requirement 16.5: Include context and metadata
+  logger.logError("Error response created", context, severity);
 
   const errorResponse: ErrorResponse = {
     success: false,
