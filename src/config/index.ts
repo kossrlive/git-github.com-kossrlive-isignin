@@ -19,6 +19,11 @@ export const config = {
             apiKey: process.env.SMS_TO_API_KEY || '',
             senderId: process.env.SMS_TO_SENDER_ID || '',
         },
+        twilio: {
+            accountSid: process.env.TWILIO_ACCOUNT_SID || '',
+            authToken: process.env.TWILIO_AUTH_TOKEN || '',
+            fromNumber: process.env.TWILIO_FROM_NUMBER || '',
+        },
     },
 
     // OAuth Provider Configuration

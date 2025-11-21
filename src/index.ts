@@ -108,21 +108,57 @@ const initializeInfrastructure = async (): Promise<void> => {
     const customerService = new CustomerService();
     const otpService = new OTPService(redis);
     
-    // Initialize SMS service
+    // Initialize SMS service with multiple providers
     let smsService: SMSService;
     try {
+        const providers: ISMSProvider[] = [];
+        
+        // Load sms.to provider (primary - priority 1)
         if (config.sms.smsTo.apiKey && config.sms.smsTo.senderId) {
-            const smsToProvider = new SmsToProvider(
-                config.sms.smsTo.apiKey,
-                config.sms.smsTo.senderId
-            );
-            smsService = new SMSService([smsToProvider], redis);
-            logger.info('SMS service initialized with sms.to provider');
+            try {
+                const smsToProvider = new SmsToProvider(
+                    config.sms.smsTo.apiKey,
+                    config.sms.smsTo.senderId
+                );
+                providers.push(smsToProvider);
+                logger.info('SMS provider loaded: sms.to (priority 1)');
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                logger.error('Failed to initialize sms.to provider', { error: errorMessage });
+            }
         } else {
-            // Create SMS service with empty providers array
-            smsService = new SMSService([], redis);
+            logger.warn('⚠️  sms.to provider not configured (set SMS_TO_API_KEY and SMS_TO_SENDER_ID)');
+        }
+        
+        // Load Twilio provider (secondary - priority 2)
+        if (config.sms.twilio.accountSid && config.sms.twilio.authToken && config.sms.twilio.fromNumber) {
+            try {
+                const twilioProvider = new TwilioProvider(
+                    config.sms.twilio.accountSid,
+                    config.sms.twilio.authToken,
+                    config.sms.twilio.fromNumber
+                );
+                providers.push(twilioProvider);
+                logger.info('SMS provider loaded: Twilio (priority 2)');
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                logger.error('Failed to initialize Twilio provider', { error: errorMessage });
+            }
+        } else {
+            logger.warn('⚠️  Twilio provider not configured (set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_FROM_NUMBER)');
+        }
+        
+        // Create SMS service with loaded providers
+        smsService = new SMSService(providers, redis);
+        
+        if (providers.length === 0) {
             logger.warn('⚠️  SMS service initialized without providers (SMS features disabled)');
-            logger.warn('⚠️  Set SMS_TO_API_KEY and SMS_TO_SENDER_ID in .env to enable SMS');
+            logger.warn('⚠️  Configure at least one SMS provider to enable SMS features');
+        } else {
+            logger.info('SMS service initialized', {
+                providerCount: providers.length,
+                providers: providers.map(p => ({ name: p.name, priority: p.priority }))
+            });
         }
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
