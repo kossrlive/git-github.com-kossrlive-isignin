@@ -13,6 +13,7 @@ import {
 } from "@shopify/polaris";
 import type { ISMSProvider } from "app/providers";
 import { SmsToProvider, TwilioProvider } from "app/providers";
+import { ThemeExtensionInstructions } from "../components/ThemeExtensionInstructions";
 import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 
@@ -215,7 +216,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export default function Index() {
-  const { stats } = useLoaderData<typeof loader>();
+  const { stats, shop } = useLoaderData<typeof loader>();
 
   const formatPercentage = (value: number) => {
     return `${value.toFixed(1)}%`;
@@ -257,6 +258,8 @@ export default function Index() {
                   </Text>
                 </BlockStack>
               </Card>
+
+              <ThemeExtensionInstructions shop={shop} />
 
               <Card>
                 <BlockStack gap="400">

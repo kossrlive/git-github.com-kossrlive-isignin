@@ -240,13 +240,13 @@
   - Ensure all tests pass, ask the user if questions arise.
 
 
-- [ ] 10. Create theme app extension for login form
-  - [ ] 10.1 Initialize theme extension
+- [x] 10. Create theme app extension for login form
+  - [x] 10.1 Initialize theme extension
     - Run `shopify app generate extension` and select "Theme app extension"
     - Name it "customer-login"
     - _Requirements: 3.1, 12.1_
   
-  - [ ] 10.2 Create login form Liquid block
+  - [x] 10.2 Create login form Liquid block
     - Create block schema with settings (show_sms, show_email, show_oauth)
     - Render login form HTML structure
     - Include phone number input for SMS
@@ -254,7 +254,7 @@
     - Include OAuth provider buttons
     - _Requirements: 3.2, 3.3, 3.4, 3.5_
   
-  - [ ] 10.3 Create login form JavaScript
+  - [x] 10.3 Create login form JavaScript
     - Implement SMS authentication flow (send OTP, verify OTP)
     - Implement email authentication flow
     - Implement OAuth authentication flow
@@ -262,14 +262,14 @@
     - Show loading states
     - _Requirements: 3.2, 3.3, 3.4, 3.5_
   
-  - [ ] 10.4 Create login form CSS with customization support
+  - [x] 10.4 Create login form CSS with customization support
     - Apply merchant's custom primary color
     - Apply merchant's button style (rounded/square)
     - Display merchant's logo
     - Ensure responsive design
     - _Requirements: 3.6_
   
-  - [ ] 10.5 Add instructions in admin panel for enabling extension
+  - [x] 10.5 Add instructions in admin panel for enabling extension
     - Display step-by-step instructions
     - Link to theme editor
     - Show preview of login form
@@ -325,6 +325,8 @@
     - Format order confirmation message
     - Queue SMS job
     - Log delivery status
+    - Give ability to edit order message with template variables (order.id, other info) in settings
+    - Give ability to switch on/off order SMS delviery in settings
     - _Requirements: 14.1, 14.2, 14.3, 14.4, 14.5_
   
   - [ ]* 13.2 Write property test for order confirmation
