@@ -1,0 +1,413 @@
+{
+    "info": {
+        "name": "Shopify SMS Auth API",
+        "description": "API collection for Shopify SMS Authentication App",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "version": "1.0.0"
+    },
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:3000",
+            "type": "string"
+        },
+        {
+            "key": "phone",
+            "value": "+1234567890",
+            "type": "string"
+        },
+        {
+            "key": "email",
+            "value": "customer@example.com",
+            "type": "string"
+        }
+    ],
+    "item": [
+        {
+            "name": "Authentication",
+            "item": [
+                {
+                    "name": "Send OTP",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"resend\": false\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/send-otp",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "send-otp"
+                            ]
+                        },
+                        "description": "Send OTP to phone number via SMS"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Verify OTP",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"phone\": \"{{phone}}\",\n  \"otp\": \"123456\",\n  \"returnTo\": \"/checkout\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/verify-otp",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "verify-otp"
+                            ]
+                        },
+                        "description": "Verify OTP and authenticate user"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Email Login",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"securePassword123\",\n  \"returnTo\": \"/account\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/email-login",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "email-login"
+                            ]
+                        },
+                        "description": "Authenticate with email and password"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Initiate OAuth (Google)",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/oauth/google?returnTo=/checkout",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "oauth",
+                                "google"
+                            ],
+                            "query": [
+                                {
+                                    "key": "returnTo",
+                                    "value": "/checkout"
+                                }
+                            ]
+                        },
+                        "description": "Start OAuth flow with Google"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "OAuth Callback",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"code\": \"authorization_code_from_provider\",\n  \"state\": \"base64_encoded_state\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/oauth/google/callback",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "oauth",
+                                "google",
+                                "callback"
+                            ]
+                        },
+                        "description": "Handle OAuth callback from provider"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Restore Session",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"sessionData\": {\n    \"email\": \"{{email}}\",\n    \"password\": \"securePassword123\",\n    \"timestamp\": 1234567890000\n  },\n  \"returnTo\": \"/checkout\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/auth/session/restore",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "auth",
+                                "session",
+                                "restore"
+                            ]
+                        },
+                        "description": "Restore session from stored credentials"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Admin",
+            "item": [
+                {
+                    "name": "Get Settings",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/settings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "settings"
+                            ]
+                        },
+                        "description": "Fetch current app settings"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Update Settings",
+                    "request": {
+                        "method": "PUT",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"enabledMethods\": {\n    \"sms\": true,\n    \"email\": true,\n    \"google\": false\n  },\n  \"uiCustomization\": {\n    \"primaryColor\": \"#FF5733\",\n    \"buttonStyle\": \"pill\",\n    \"logoUrl\": \"/uploads/logos/logo-123456.png\"\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/settings",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "settings"
+                            ]
+                        },
+                        "description": "Save app settings"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Upload Logo",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "logo",
+                                    "type": "file",
+                                    "src": []
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/admin/upload-logo",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "admin",
+                                "upload-logo"
+                            ]
+                        },
+                        "description": "Upload logo file for UI customization"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Webhooks",
+            "item": [
+                {
+                    "name": "SMS Delivery Receipt",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"message_id\": \"msg_123456\",\n  \"status\": \"delivered\",\n  \"timestamp\": \"2024-01-15T10:30:00Z\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/webhooks/sms-dlr",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "webhooks",
+                                "sms-dlr"
+                            ]
+                        },
+                        "description": "Handle SMS delivery status updates"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Shopify Order Created",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            },
+                            {
+                                "key": "X-Shopify-Topic",
+                                "value": "orders/create"
+                            },
+                            {
+                                "key": "X-Shopify-Shop-Domain",
+                                "value": "your-store.myshopify.com"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"id\": 1234567890,\n  \"order_number\": 1001,\n  \"name\": \"#1001\",\n  \"total_price\": \"150.00\",\n  \"customer\": {\n    \"id\": 9876543210,\n    \"email\": \"customer@example.com\",\n    \"phone\": \"+1234567890\"\n  }\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/webhooks/shopify/orders/create",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "webhooks",
+                                "shopify",
+                                "orders",
+                                "create"
+                            ]
+                        },
+                        "description": "Handle new order webhooks from Shopify"
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Confirm Order",
+                    "request": {
+                        "method": "POST",
+                        "header": [
+                            {
+                                "key": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"orderId\": \"1234567890\",\n  \"otp\": \"123456\"\n}"
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/webhooks/shopify/orders/confirm",
+                            "host": [
+                                "{{baseUrl}}"
+                            ],
+                            "path": [
+                                "api",
+                                "webhooks",
+                                "shopify",
+                                "orders",
+                                "confirm"
+                            ]
+                        },
+                        "description": "Confirm order using OTP"
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "Health Check",
+            "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                    "raw": "{{baseUrl}}/health",
+                    "host": [
+                        "{{baseUrl}}"
+                    ],
+                    "path": [
+                        "health"
+                    ]
+                },
+                "description": "Check if service is running"
+            },
+            "response": []
+        }
+    ]
+}

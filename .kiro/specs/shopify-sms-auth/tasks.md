@@ -434,20 +434,20 @@
   - Test settings changes reflected on storefront
   - Test enabling/disabling auth methods
 
-- [ ] 17. Documentation and deployment preparation
-- [ ] 17.1 Write API documentation
+- [x] 17. Documentation and deployment preparation
+- [x] 17.1 Write API documentation
   - Document all API endpoints with request/response examples
   - Document authentication requirements
   - Document error codes and messages
   - Create Postman/OpenAPI collection
 
-- [ ] 17.2 Write deployment guide
+- [x] 17.2 Write deployment guide
   - Document all environment variables with descriptions
   - Document infrastructure requirements (Redis, Node.js version)
   - Document deployment steps for production
   - Document monitoring and logging setup
 
-- [ ] 17.3 Write user guide
+- [x] 17.3 Write user guide
   - Document app installation process for merchants
   - Document admin configuration steps with screenshots
   - Document customer authentication experience

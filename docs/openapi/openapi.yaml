@@ -1,0 +1,711 @@
+openapi: 3.0.3
+info:
+  title: Shopify SMS Authentication API
+  description: |
+    API for multi-channel customer authentication with SMS, email/password, and OAuth providers.
+    
+    This API enables Shopify stores to authenticate customers through multiple channels:
+    - SMS OTP authentication
+    - Email/password authentication
+    - OAuth (Google, with extensibility for Apple, Facebook)
+    
+    All authenticated sessions are created using Shopify Multipass for secure customer login.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+
+servers:
+  - url: http://localhost:3000
+    description: Development server
+  - url: https://your-app-url.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: Customer authentication endpoints
+  - name: Admin
+    description: Admin configuration endpoints
+  - name: Webhooks
+    description: Webhook handlers for external services
+  - name: Health
+    description: Service health check
+
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Health check
+      description: Check if the service is running
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
+                  timestamp:
+                    type: string
+                    format: date-time
+                  requestId:
+                    type: string
+                    format: uuid
+
+  /api/auth/send-otp:
+    post:
+      tags:
+        - Authentication
+      summary: Send OTP
+      description: Send a one-time password to a phone number via SMS
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+              properties:
+                phone:
+                  type: string
+                  description: Phone number in E.164 format
+                  example: "+1234567890"
+                resend:
+                  type: boolean
+                  description: Whether this is a resend request
+                  default: false
+      responses:
+        '200':
+          description: OTP sent successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/verify-otp:
+    post:
+      tags:
+        - Authentication
+      summary: Verify OTP
+      description: Verify the OTP code and authenticate the user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - phone
+                - otp
+              properties:
+                phone:
+                  type: string
+                  description: Phone number in E.164 format
+                  example: "+1234567890"
+                otp:
+                  type: string
+                  description: 6-digit verification code
+                  pattern: '^\d{6}$'
+                  example: "123456"
+                returnTo:
+                  type: string
+                  description: URL to redirect after authentication
+                  example: "/checkout"
+      responses:
+        '200':
+          description: OTP verified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid or expired OTP
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: Too many failed attempts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/email-login:
+    post:
+      tags:
+        - Authentication
+      summary: Email login
+      description: Authenticate with email and password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: "customer@example.com"
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: "securePassword123"
+                returnTo:
+                  type: string
+                  description: URL to redirect after authentication
+                  example: "/account"
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/oauth/{provider}:
+    get:
+      tags:
+        - Authentication
+      summary: Initiate OAuth
+      description: Start OAuth authentication flow with a provider
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google]
+          description: OAuth provider name
+        - name: returnTo
+          in: query
+          schema:
+            type: string
+          description: URL to redirect after authentication
+      responses:
+        '302':
+          description: Redirect to OAuth provider
+        '400':
+          description: Invalid provider
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/oauth/{provider}/callback:
+    get:
+      tags:
+        - Authentication
+      summary: OAuth callback (GET)
+      description: Handle OAuth provider callback via redirect
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+          description: OAuth provider name
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Authorization code from OAuth provider
+        - name: state
+          in: query
+          schema:
+            type: string
+          description: State parameter for CSRF protection
+      responses:
+        '302':
+          description: Redirect to Multipass URL
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid authorization code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    post:
+      tags:
+        - Authentication
+      summary: OAuth callback (POST)
+      description: Handle OAuth provider callback via POST
+      parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+          description: OAuth provider name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - code
+              properties:
+                code:
+                  type: string
+                  description: Authorization code from OAuth provider
+                state:
+                  type: string
+                  description: State parameter for CSRF protection
+      responses:
+        '200':
+          description: Authentication successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Invalid authorization code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/session/restore:
+    post:
+      tags:
+        - Authentication
+      summary: Restore session
+      description: Restore a session from stored credentials
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sessionData
+              properties:
+                sessionData:
+                  type: object
+                  description: Stored session data
+                  properties:
+                    email:
+                      type: string
+                      format: email
+                    phone:
+                      type: string
+                    password:
+                      type: string
+                    otp:
+                      type: string
+                    timestamp:
+                      type: number
+                returnTo:
+                  type: string
+                  description: URL to redirect after restoration
+      responses:
+        '200':
+          description: Session restored successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSuccessResponse'
+        '400':
+          description: Invalid session data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Session expired or invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/settings:
+    get:
+      tags:
+        - Admin
+      summary: Get settings
+      description: Fetch current app settings
+      responses:
+        '200':
+          description: Settings retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Settings'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+    put:
+      tags:
+        - Admin
+      summary: Update settings
+      description: Save app settings
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Settings'
+      responses:
+        '200':
+          description: Settings saved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  settings:
+                    $ref: '#/components/schemas/Settings'
+                  requestId:
+                    type: string
+                    format: uuid
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/admin/upload-logo:
+    post:
+      tags:
+        - Admin
+      summary: Upload logo
+      description: Upload a logo file for UI customization
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required:
+                - logo
+              properties:
+                logo:
+                  type: string
+                  format: binary
+                  description: Image file (max 5MB)
+      responses:
+        '200':
+          description: Logo uploaded successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  url:
+                    type: string
+                    description: URL to uploaded logo
+                  requestId:
+                    type: string
+                    format: uuid
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/webhooks/sms-dlr:
+    post:
+      tags:
+        - Webhooks
+      summary: SMS delivery receipt
+      description: Handle SMS delivery status updates from SMS providers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: '#/components/schemas/SmsToWebhook'
+                - $ref: '#/components/schemas/TwilioWebhook'
+      responses:
+        '200':
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  messageId:
+                    type: string
+                  requestId:
+                    type: string
+                    format: uuid
+
+  /api/webhooks/shopify/orders/create:
+    post:
+      tags:
+        - Webhooks
+      summary: Shopify order created
+      description: Handle new order webhooks from Shopify
+      parameters:
+        - name: X-Shopify-Topic
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "orders/create"
+        - name: X-Shopify-Shop-Domain
+          in: header
+          required: true
+          schema:
+            type: string
+            example: "your-store.myshopify.com"
+        - name: X-Shopify-Hmac-Sha256
+          in: header
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ShopifyOrder'
+      responses:
+        '200':
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+
+  /api/webhooks/shopify/orders/confirm:
+    post:
+      tags:
+        - Webhooks
+      summary: Confirm order
+      description: Confirm an order using OTP
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - orderId
+                - otp
+              properties:
+                orderId:
+                  type: string
+                  description: Shopify order ID
+                otp:
+                  type: string
+                  pattern: '^\d{6}$'
+                  description: 6-digit confirmation code
+      responses:
+        '200':
+          description: Order confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Validation or authentication error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+components:
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: "Verification code sent successfully"
+        requestId:
+          type: string
+          format: uuid
+
+    AuthSuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        multipassUrl:
+          type: string
+          description: Shopify Multipass URL for authentication
+          example: "https://your-store.myshopify.com/account/login/multipass/..."
+        requestId:
+          type: string
+          format: uuid
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              enum:
+                - VALIDATION_ERROR
+                - AUTHENTICATION_ERROR
+                - RATE_LIMIT_ERROR
+                - EXTERNAL_SERVICE_ERROR
+                - INTERNAL_ERROR
+                - NOT_FOUND
+            message:
+              type: string
+            details:
+              type: object
+              properties:
+                field:
+                  type: string
+                message:
+                  type: string
+            requestId:
+              type: string
+              format: uuid
+
+    Settings:
+      type: object
+      required:
+        - enabledMethods
+        - uiCustomization
+      properties:
+        enabledMethods:
+          type: object
+          properties:
+            sms:
+              type: boolean
+            email:
+              type: boolean
+            google:
+              type: boolean
+        uiCustomization:
+          type: object
+          properties:
+            primaryColor:
+              type: string
+              pattern: '^#[0-9A-Fa-f]{6}$'
+              example: "#000000"
+            buttonStyle:
+              type: string
+              enum: [rounded, square, pill]
+              example: "rounded"
+            logoUrl:
+              type: string
+              example: "/uploads/logos/logo-123456.png"
+
+    SmsToWebhook:
+      type: object
+      properties:
+        message_id:
+          type: string
+        status:
+          type: string
+          enum: [pending, sent, delivered, failed]
+        timestamp:
+          type: string
+          format: date-time
+
+    TwilioWebhook:
+      type: object
+      properties:
+        MessageSid:
+          type: string
+        MessageStatus:
+          type: string
+          enum: [queued, sent, delivered, failed]
+        EventType:
+          type: string
+
+    ShopifyOrder:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        order_number:
+          type: integer
+        name:
+          type: string
+        total_price:
+          type: string
+        customer:
+          type: object
+          properties:
+            id:
+              type: integer
+              format: int64
+            email:
+              type: string
+              format: email
+            phone:
+              type: string
