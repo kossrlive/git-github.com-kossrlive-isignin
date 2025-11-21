@@ -43,46 +43,22 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Requirement 6.1: Validate email and password are non-empty
     if (!email || email.trim() === "") {
-      return json<EmailLoginResponse>(
-        {
-          success: false,
-          error: "Email is required",
-        },
-        { status: 400 }
-      );
+      return missingFieldError("Email");
     }
 
     if (!password || password.trim() === "") {
-      return json<EmailLoginResponse>(
-        {
-          success: false,
-          error: "Password is required",
-        },
-        { status: 400 }
-      );
+      return missingFieldError("Password");
     }
 
     if (!shop) {
-      return json<EmailLoginResponse>(
-        {
-          success: false,
-          error: "Shop domain is required",
-        },
-        { status: 400 }
-      );
+      return missingFieldError("Shop domain");
     }
 
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       logger.warn("Invalid email format", { email, shop });
-      return json<EmailLoginResponse>(
-        {
-          success: false,
-          error: "Invalid email format",
-        },
-        { status: 400 }
-      );
+      return validationError(ErrorMessages.INVALID_EMAIL);
     }
 
     // Initialize services
@@ -102,13 +78,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         ttl,
       });
 
-      return json<EmailLoginResponse>(
-        {
-          success: false,
-          error: "Too many failed attempts. Please try again later.",
-        },
-        { status: 429 }
-      );
+      return accountBlockedError();
     }
 
     // Requirement 6.2: Check if customer exists using GraphQL
@@ -164,13 +134,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
         await trackFailedAttempt(redis, email, shop);
 
-        return json<EmailLoginResponse>(
-          {
-            success: false,
-            error: "Invalid email or password",
-          },
-          { status: 401 }
-        );
+        // Requirement 6.5: Don't reveal which field was incorrect
+        return invalidCredentialsError();
       }
 
       // Requirement 6.3: Verify password using bcrypt
@@ -211,13 +176,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         }
 
         // Requirement 6.5: Don't reveal whether email or password was incorrect
-        return json<EmailLoginResponse>(
-          {
-            success: false,
-            error: "Invalid email or password",
-          },
-          { status: 401 }
-        );
+        return invalidCredentialsError();
       }
 
       // Password is valid - reset failed attempts
@@ -289,13 +248,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       error: error instanceof Error ? error.message : "Unknown error",
     });
 
-    return json<EmailLoginResponse>(
-      {
-        success: false,
-        error: "Authentication failed. Please try again.",
-      },
-      { status: 500 }
-    );
+    return internalError(error instanceof Error ? error : undefined);
   }
 };
 

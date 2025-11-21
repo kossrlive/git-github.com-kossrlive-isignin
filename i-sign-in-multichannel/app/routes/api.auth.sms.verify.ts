@@ -43,33 +43,15 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Validate required fields
     if (!phoneNumber) {
-      return json<VerifySMSResponse>(
-        {
-          success: false,
-          error: "Phone number is required",
-        },
-        { status: 400 }
-      );
+      return missingFieldError("Phone number");
     }
 
     if (!code) {
-      return json<VerifySMSResponse>(
-        {
-          success: false,
-          error: "Verification code is required",
-        },
-        { status: 400 }
-      );
+      return missingFieldError("Verification code");
     }
 
     if (!shop) {
-      return json<VerifySMSResponse>(
-        {
-          success: false,
-          error: "Shop domain is required",
-        },
-        { status: 400 }
-      );
+      return missingFieldError("Shop domain");
     }
 
     // Requirement 5.5: Validate OTP format (6 digits)
@@ -79,13 +61,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         phone: maskPhone(phoneNumber),
         shop,
       });
-      return json<VerifySMSResponse>(
-        {
-          success: false,
-          error: "Invalid verification code format",
-        },
-        { status: 400 }
-      );
+      return validationError("Invalid verification code format");
     }
 
     // Initialize services
@@ -100,14 +76,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         phone: maskPhone(phoneNumber),
         shop,
       });
-      return json<VerifySMSResponse>(
-        {
-          success: false,
-          error: "Too many failed attempts. Please try again later.",
-        },
-        { status: 429 }
-      );
+      // Requirement 15.4: "Too many attempts. Please try again later."
+      return rateLimitError();
     }
+
+    // Check if OTP exists to differentiate between expired and invalid
+    const otpKey = `otp:${phoneNumber}`;
+    const otpExists = await redis.exists(otpKey);
 
     // Requirement 5.5, 5.7: Verify OTP (checks expiration automatically)
     const isValid = await otpService.verifyOTP(phoneNumber, code);
@@ -116,6 +91,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       logger.warn("Invalid or expired OTP", {
         phone: maskPhone(phoneNumber),
         shop,
+        otpExists: otpExists === 1,
       });
 
       // Track failed authentication
@@ -132,7 +108,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
               method: "sms",
               metadata: JSON.stringify({
                 phone: maskPhone(phoneNumber),
-                reason: "invalid_otp",
+                reason: otpExists === 1 ? "invalid_otp" : "expired_otp",
               }),
             },
           });
@@ -143,13 +119,13 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         });
       }
 
-      return json<VerifySMSResponse>(
-        {
-          success: false,
-          error: "Invalid or expired verification code",
-        },
-        { status: 401 }
-      );
+      // Requirement 15.2: "Invalid code. Please try again."
+      // Requirement 15.3: "Code expired. Request a new one."
+      if (otpExists === 0) {
+        return expiredOTPError();
+      } else {
+        return invalidOTPError();
+      }
     }
 
     logger.info("OTP verified successfully", {
@@ -243,13 +219,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       error: error instanceof Error ? error.message : "Unknown error",
     });
 
-    return json<VerifySMSResponse>(
-      {
-        success: false,
-        error: "Failed to verify code. Please try again.",
-      },
-      { status: 500 }
-    );
+    return internalError(error instanceof Error ? error : undefined);
   }
 };
 

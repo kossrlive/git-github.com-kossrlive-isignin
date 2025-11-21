@@ -39,23 +39,11 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     // Validate required fields
     if (!phoneNumber) {
-      return json<SendSMSResponse>(
-        {
-          success: false,
-          message: "Phone number is required",
-        },
-        { status: 400 }
-      );
+      return missingFieldError("Phone number");
     }
 
     if (!shop) {
-      return json<SendSMSResponse>(
-        {
-          success: false,
-          message: "Shop domain is required",
-        },
-        { status: 400 }
-      );
+      return missingFieldError("Shop domain");
     }
 
     // Requirement 5.1: Validate phone number format (E.164)
@@ -65,14 +53,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         phone: maskPhone(phoneNumber),
         shop,
       });
-      return json<SendSMSResponse>(
-        {
-          success: false,
-          message:
-            "Invalid phone number format. Please use E.164 format (e.g., +1234567890)",
-        },
-        { status: 400 }
-      );
+      return invalidPhoneNumberError();
     }
 
     // Initialize services
@@ -86,13 +67,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         phone: maskPhone(phoneNumber),
         shop,
       });
-      return json<SendSMSResponse>(
-        {
-          success: false,
-          message: "Too many failed attempts. Please try again later.",
-        },
-        { status: 429 }
-      );
+      // Requirement 15.4: "Too many attempts. Please try again later."
+      return rateLimitError();
     }
 
     // Check if phone is blocked from sending
@@ -101,13 +77,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         phone: maskPhone(phoneNumber),
         shop,
       });
-      return json<SendSMSResponse>(
-        {
-          success: false,
-          message: "Too many send attempts. Please try again later.",
-        },
-        { status: 429 }
-      );
+      // Requirement 15.4: "Too many attempts. Please try again later."
+      return rateLimitError();
     }
 
     // Requirement 5.8: Check resend cooldown (30 seconds)
@@ -118,14 +89,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         shop,
         retryAfter: canResend.retryAfter,
       });
-      return json<SendSMSResponse>(
-        {
-          success: false,
-          message: `Please wait ${canResend.retryAfter} seconds before requesting a new code`,
-          cooldownSeconds: canResend.retryAfter,
-        },
-        { status: 429 }
-      );
+      // Requirement 15.4: "Too many attempts. Please try again later."
+      return rateLimitError(canResend.retryAfter);
     }
 
     // Track send attempt (rate limiting)
@@ -136,14 +101,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
         shop,
         retryAfter: sendAllowed.retryAfter,
       });
-      return json<SendSMSResponse>(
-        {
-          success: false,
-          message: "Too many send attempts. Please try again later.",
-          cooldownSeconds: sendAllowed.retryAfter,
-        },
-        { status: 429 }
-      );
+      // Requirement 15.4: "Too many attempts. Please try again later."
+      return rateLimitError(sendAllowed.retryAfter);
     }
 
     // Requirement 5.2: Generate OTP code
@@ -210,13 +169,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       error: error instanceof Error ? error.message : "Unknown error",
     });
 
-    return json<SendSMSResponse>(
-      {
-        success: false,
-        message: "Failed to send verification code. Please try again.",
-      },
-      { status: 500 }
-    );
+    return internalError(error instanceof Error ? error : undefined);
   }
 };
 
