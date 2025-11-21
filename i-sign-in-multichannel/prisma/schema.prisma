@@ -30,3 +30,67 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model Shop {
+  id          String        @id @default(cuid())
+  domain      String        @unique
+  accessToken String
+  settings    ShopSettings?
+  analytics   Analytics[]
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+}
+
+model ShopSettings {
+  id        String   @id @default(cuid())
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  shopId    String   @unique
+  
+  // SMS Provider Config
+  smsPrimary       String?  @default("sms.to")
+  smsToApiKey      String?
+  smsToSenderId    String?
+  twilioAccountSid String?
+  twilioAuthToken  String?
+  twilioFromNumber String?
+  
+  // OAuth Provider Config
+  googleClientId     String?
+  googleClientSecret String?
+  googleEnabled      Boolean @default(false)
+  appleClientId      String?
+  appleTeamId        String?
+  appleKeyId         String?
+  appleEnabled       Boolean @default(false)
+  facebookAppId      String?
+  facebookAppSecret  String?
+  facebookEnabled    Boolean @default(false)
+  
+  // UI Customization
+  primaryColor String  @default("#000000")
+  buttonStyle  String  @default("rounded")
+  logoUrl      String?
+  
+  // Feature Flags
+  smsAuthEnabled           Boolean @default(true)
+  emailAuthEnabled         Boolean @default(true)
+  oauthAuthEnabled         Boolean @default(true)
+  orderConfirmationEnabled Boolean @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Analytics {
+  id        String   @id @default(cuid())
+  shop      Shop     @relation(fields: [shopId], references: [id])
+  shopId    String
+  
+  eventType String // "auth_success", "auth_failure", "sms_sent", "sms_failed"
+  method    String? // "sms", "email", "google", "apple", "facebook"
+  metadata  String? // JSON string for SQLite compatibility
+  
+  createdAt DateTime @default(now())
+  
+  @@index([shopId, eventType, createdAt])
+}
