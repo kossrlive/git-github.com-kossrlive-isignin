@@ -1,0 +1,12 @@
+# Learn more about configuring your checkout UI extension at https://shopify.dev/docs/api/checkout-ui-extensions/configuration
+
+api_version = "2024-10"
+name = "checkout-auth"
+type = "ui_extension"
+
+[[extensions.targeting]]
+target = "purchase.checkout.block.render"
+
+[extensions.capabilities]
+network_access = true
+block_progress = true

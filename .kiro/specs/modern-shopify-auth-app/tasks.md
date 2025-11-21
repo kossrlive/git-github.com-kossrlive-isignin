@@ -275,13 +275,13 @@
     - Show preview of login form
     - _Requirements: 12.2, 12.4, 12.5_
 
-- [ ] 11. Create checkout UI extension for authentication modal
-  - [ ] 11.1 Initialize checkout UI extension
+- [x] 11. Create checkout UI extension for authentication modal
+  - [x] 11.1 Initialize checkout UI extension
     - Run `shopify app generate extension` and select "Checkout UI extension"
     - Name it "checkout-auth"
     - _Requirements: 4.1_
   
-  - [ ] 11.2 Create authentication modal component
+  - [x] 11.2 Create authentication modal component
     - Check if customer is authenticated
     - Display modal if not authenticated
     - Show SMS, Email, and OAuth options
@@ -289,14 +289,14 @@
     - Allow dismissal for guest checkout
     - _Requirements: 4.1, 4.2, 4.3, 4.4_
   
-  - [ ] 11.3 Implement authentication flows in checkout extension
+  - [x] 11.3 Implement authentication flows in checkout extension
     - Implement SMS authentication (send OTP, verify OTP)
     - Implement email authentication
     - Implement OAuth authentication
     - Close modal on success and continue checkout
     - _Requirements: 4.3_
   
-  - [ ] 11.4 Style checkout extension to match theme
+  - [x] 11.4 Style checkout extension to match theme
     - Use Shopify Checkout UI components
     - Apply merchant's custom styling
     - Ensure accessibility
