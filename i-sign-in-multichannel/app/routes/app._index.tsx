@@ -1,15 +1,15 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
 import { useLoaderData } from "@remix-run/react";
 import { TitleBar } from "@shopify/app-bridge-react";
 import {
-  Badge,
-  BlockStack,
-  Card,
-  InlineStack,
-  Layout,
-  Page,
-  Text,
+    Badge,
+    BlockStack,
+    Card,
+    InlineStack,
+    Layout,
+    Page,
+    Text,
 } from "@shopify/polaris";
 import type { ISMSProvider } from "app/providers";
 import { SmsToProvider, TwilioProvider } from "app/providers";
@@ -62,6 +62,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       },
       include: { settings: true },
     });
+  }
+
+  // Check if this is a new installation (no SMS provider configured)
+  const settings = shopRecord.settings;
+  const isNewInstallation = !settings || (
+    !settings.smsToApiKey && 
+    !settings.twilioAccountSid
+  );
+
+  // Redirect to onboarding if new installation
+  if (isNewInstallation) {
+    return redirect("/app/onboarding");
   }
 
   // Get analytics data

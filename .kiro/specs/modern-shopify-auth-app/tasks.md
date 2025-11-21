@@ -412,8 +412,8 @@
     - Provide default translations
     - _Requirements: 17.5_
 
-- [ ] 17. Create app installation and onboarding flow
-  - [ ] 17.1 Create onboarding wizard route (app/routes/app.onboarding.tsx)
+- [x] 17. Create app installation and onboarding flow
+  - [x] 17.1 Create onboarding wizard route (app/routes/app.onboarding.tsx)
     - Welcome screen with app overview
     - SMS provider setup step
     - OAuth provider setup step (optional)
@@ -421,13 +421,13 @@
     - Completion screen with next steps
     - _Requirements: 11.2, 11.3, 11.4, 11.5_
   
-  - [ ] 17.2 Implement SMS provider connection test
+  - [x] 17.2 Implement SMS provider connection test
     - Send test SMS to merchant's phone
     - Display success/failure message
     - Allow retry with different credentials
     - _Requirements: 11.4_
   
-  - [ ] 17.3 Add OAuth installation flow
+  - [x] 17.3 Add OAuth installation flow
     - Handle OAuth authorization on app install
     - Request appropriate API scopes
     - Store access token in database
