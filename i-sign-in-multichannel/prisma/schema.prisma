@@ -83,6 +83,10 @@ model ShopSettings {
   // Order Confirmation Settings
   orderConfirmationMessage String? @default("Thank you for your order! Order #{order.number} - Total: ${order.total}. We'll notify you when it ships.")
   
+  // Multi-language Support
+  defaultLanguage String? @default("en")
+  customTranslations String? // JSON string for custom translations per language
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

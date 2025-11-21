@@ -203,10 +203,11 @@ export function validationError(
 /**
  * Create an invalid phone number error response (400)
  */
-export function invalidPhoneNumberError(requestId?: string) {
+export function invalidPhoneNumberError(language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
   return createErrorResponse(
     ErrorCode.INVALID_PHONE_NUMBER,
-    ErrorMessages.INVALID_PHONE_NUMBER,
+    t.errors.invalidPhone,
     400,
     undefined,
     requestId
@@ -217,10 +218,11 @@ export function invalidPhoneNumberError(requestId?: string) {
  * Create an invalid OTP error response (401)
  * Requirements: 15.2
  */
-export function invalidOTPError(requestId?: string) {
+export function invalidOTPError(language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
   return createErrorResponse(
     ErrorCode.INVALID_OTP,
-    ErrorMessages.INVALID_OTP,
+    t.errors.invalidCode,
     401,
     undefined,
     requestId
@@ -231,10 +233,11 @@ export function invalidOTPError(requestId?: string) {
  * Create an expired OTP error response (401)
  * Requirements: 15.3
  */
-export function expiredOTPError(requestId?: string) {
+export function expiredOTPError(language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
   return createErrorResponse(
     ErrorCode.EXPIRED_OTP,
-    ErrorMessages.EXPIRED_OTP,
+    t.errors.codeExpired,
     401,
     undefined,
     requestId
@@ -245,10 +248,9 @@ export function expiredOTPError(requestId?: string) {
  * Create a rate limit error response (429)
  * Requirements: 15.4
  */
-export function rateLimitError(cooldownSeconds?: number, requestId?: string) {
-  const message = cooldownSeconds
-    ? `Too many attempts. Please try again in ${cooldownSeconds} seconds.`
-    : ErrorMessages.RATE_LIMIT_EXCEEDED;
+export function rateLimitError(cooldownSeconds?: number, language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
+  const message = t.errors.tooManyAttempts;
     
   return createErrorResponse(
     ErrorCode.RATE_LIMIT_EXCEEDED,
@@ -263,10 +265,11 @@ export function rateLimitError(cooldownSeconds?: number, requestId?: string) {
  * Create an SMS provider error response (502)
  * Requirements: 15.5
  */
-export function smsProviderError(requestId?: string) {
+export function smsProviderError(language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
   return createErrorResponse(
     ErrorCode.SMS_PROVIDER_ERROR,
-    ErrorMessages.SMS_PROVIDER_ERROR,
+    t.errors.smsFailure,
     502,
     undefined,
     requestId
@@ -276,10 +279,11 @@ export function smsProviderError(requestId?: string) {
 /**
  * Create an internal error response (500)
  */
-export function internalError(error?: Error, requestId?: string) {
+export function internalError(error?: Error, language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
   return createErrorResponse(
     ErrorCode.INTERNAL_ERROR,
-    ErrorMessages.INTERNAL_ERROR,
+    t.errors.genericError,
     500,
     error,
     requestId
@@ -290,10 +294,11 @@ export function internalError(error?: Error, requestId?: string) {
  * Create an invalid credentials error response (401)
  * Note: Message is intentionally ambiguous to not reveal which field was incorrect
  */
-export function invalidCredentialsError(requestId?: string) {
+export function invalidCredentialsError(language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
   return createErrorResponse(
     ErrorCode.INVALID_CREDENTIALS,
-    ErrorMessages.INVALID_CREDENTIALS,
+    t.errors.invalidCredentials,
     401,
     undefined,
     requestId
@@ -303,10 +308,11 @@ export function invalidCredentialsError(requestId?: string) {
 /**
  * Create an account blocked error response (429)
  */
-export function accountBlockedError(requestId?: string) {
+export function accountBlockedError(language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
   return createErrorResponse(
     ErrorCode.ACCOUNT_BLOCKED,
-    "Account temporarily blocked due to too many failed attempts. Please try again later.",
+    t.errors.accountBlocked,
     429,
     undefined,
     requestId
@@ -316,10 +322,11 @@ export function accountBlockedError(requestId?: string) {
 /**
  * Create a missing required field error response (400)
  */
-export function missingFieldError(fieldName: string, requestId?: string) {
+export function missingFieldError(fieldName: string, language: string = 'en', requestId?: string) {
+  const t = getTranslations(language);
   return createErrorResponse(
     ErrorCode.MISSING_REQUIRED_FIELD,
-    `${fieldName} is required`,
+    `${fieldName} ${t.errors.requiredField.toLowerCase()}`,
     400,
     { field: fieldName },
     requestId

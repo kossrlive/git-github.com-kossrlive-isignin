@@ -3,12 +3,12 @@ import { json } from "@remix-run/node";
 import { useLoaderData, useNavigation, useSubmit } from "@remix-run/react";
 import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
 import {
-  Banner,
-  BlockStack,
-  Button,
-  InlineStack,
-  Layout,
-  Page,
+    Banner,
+    BlockStack,
+    Button,
+    InlineStack,
+    Layout,
+    Page,
 } from "@shopify/polaris";
 import { useEffect, useState } from "react";
 import { AnalyticsDashboard } from "../components/AnalyticsDashboard";
@@ -154,6 +154,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
       buttonStyle: formData.get("buttonStyle") as string,
       logoUrl: formData.get("logoUrl") as string,
       multipassSecret: formData.get("multipassSecret") as string,
+      defaultLanguage: formData.get("defaultLanguage") as string,
+      customTranslations: formData.get("customTranslations") as string,
     };
 
     await prisma.shopSettings.upsert({
@@ -166,6 +168,45 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     });
 
     return json({ success: true, message: "Settings saved successfully" });
+  }
+
+  if (action === "saveTranslations") {
+    const language = formData.get("language") as string;
+    const translations = formData.get("translations") as string;
+
+    // Get existing custom translations
+    const existingSettings = await prisma.shopSettings.findUnique({
+      where: { shopId: shopRecord.id },
+    });
+
+    let customTranslations: Record<string, any> = {};
+    if (existingSettings?.customTranslations) {
+      try {
+        customTranslations = JSON.parse(existingSettings.customTranslations);
+      } catch {
+        customTranslations = {};
+      }
+    }
+
+    // Update translations for the specific language
+    if (translations) {
+      customTranslations[language] = JSON.parse(translations);
+    } else {
+      delete customTranslations[language];
+    }
+
+    await prisma.shopSettings.upsert({
+      where: { shopId: shopRecord.id },
+      update: {
+        customTranslations: JSON.stringify(customTranslations),
+      },
+      create: {
+        shopId: shopRecord.id,
+        customTranslations: JSON.stringify(customTranslations),
+      },
+    });
+
+    return json({ success: true, message: "Translations saved successfully" });
   }
 
   if (action === "testConnection") {
@@ -211,6 +252,8 @@ export default function Settings() {
     buttonStyle: settings.buttonStyle,
     logoUrl: settings.logoUrl || "",
     multipassSecret: settings.multipassSecret || "",
+    defaultLanguage: settings.defaultLanguage || "en",
+    customTranslations: settings.customTranslations || "",
   });
 
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
@@ -242,6 +285,15 @@ export default function Settings() {
     formDataToSubmit.append("provider", provider);
     submit(formDataToSubmit, { method: "post" });
     shopify.toast.show(`Testing ${provider} connection...`);
+  };
+
+  const handleSaveTranslations = (language: string, translations: Record<string, string>) => {
+    const formDataToSubmit = new FormData();
+    formDataToSubmit.append("action", "saveTranslations");
+    formDataToSubmit.append("language", language);
+    formDataToSubmit.append("translations", JSON.stringify(translations));
+    submit(formDataToSubmit, { method: "post" });
+    shopify.toast.show("Translations saved successfully");
   };
 
   return (
@@ -292,6 +344,12 @@ export default function Settings() {
                 buttonStyle={formData.buttonStyle}
                 logoUrl={formData.logoUrl}
                 onChange={handleChange}
+              />
+
+              <TranslationConfig
+                defaultLanguage={formData.defaultLanguage}
+                customTranslations={formData.customTranslations}
+                onSave={handleSaveTranslations}
               />
 
               <InlineStack align="end">
