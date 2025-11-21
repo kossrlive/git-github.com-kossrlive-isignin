@@ -1,330 +1,280 @@
-import { useEffect } from "react";
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
-import { useFetcher } from "@remix-run/react";
+import type { LoaderFunctionArgs } from "@remix-run/node";
+import { json } from "@remix-run/node";
+import { useLoaderData } from "@remix-run/react";
+import { TitleBar } from "@shopify/app-bridge-react";
 import {
-  Page,
-  Layout,
-  Text,
-  Card,
-  Button,
-  BlockStack,
-  Box,
-  List,
-  Link,
-  InlineStack,
+    Badge,
+    BlockStack,
+    Card,
+    InlineStack,
+    Layout,
+    Page,
+    Text,
 } from "@shopify/polaris";
-import { TitleBar, useAppBridge } from "@shopify/app-bridge-react";
+import prisma from "../db.server";
 import { authenticate } from "../shopify.server";
 
-export const loader = async ({ request }: LoaderFunctionArgs) => {
-  await authenticate.admin(request);
-
-  return null;
-};
-
-export const action = async ({ request }: ActionFunctionArgs) => {
-  const { admin } = await authenticate.admin(request);
-  const color = ["Red", "Orange", "Yellow", "Green"][
-    Math.floor(Math.random() * 4)
-  ];
-  const response = await admin.graphql(
-    `#graphql
-      mutation populateProduct($product: ProductCreateInput!) {
-        productCreate(product: $product) {
-          product {
-            id
-            title
-            handle
-            status
-            variants(first: 10) {
-              edges {
-                node {
-                  id
-                  price
-                  barcode
-                  createdAt
-                }
-              }
-            }
-          }
-        }
-      }`,
-    {
-      variables: {
-        product: {
-          title: `${color} Snowboard`,
-        },
-      },
-    },
-  );
-  const responseJson = await response.json();
-
-  const product = responseJson.data!.productCreate!.product!;
-  const variantId = product.variants.edges[0]!.node!.id!;
-
-  const variantResponse = await admin.graphql(
-    `#graphql
-    mutation shopifyRemixTemplateUpdateVariant($productId: ID!, $variants: [ProductVariantsBulkInput!]!) {
-      productVariantsBulkUpdate(productId: $productId, variants: $variants) {
-        productVariants {
-          id
-          price
-          barcode
-          createdAt
-        }
-      }
-    }`,
-    {
-      variables: {
-        productId: product.id,
-        variants: [{ id: variantId, price: "100.00" }],
-      },
-    },
-  );
-
-  const variantResponseJson = await variantResponse.json();
-
-  return {
-    product: responseJson!.data!.productCreate!.product,
-    variant:
-      variantResponseJson!.data!.productVariantsBulkUpdate!.productVariants,
+interface AnalyticsStats {
+  totalAuthentications: number;
+  authMethodBreakdown: {
+    sms: number;
+    email: number;
+    google: number;
+    apple: number;
+    facebook: number;
   };
+  successRate: number;
+  smsDeliveryRate: number;
+  recentActivity: Array<{
+    id: string;
+    eventType: string;
+    method: string | null;
+    createdAt: string;
+  }>;
+}
+
+export const loader = async ({ request }: LoaderFunctionArgs) => {
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
+
+  // Get or create shop record
+  let shopRecord = await prisma.shop.findUnique({
+    where: { domain: shop },
+  });
+
+  if (!shopRecord) {
+    shopRecord = await prisma.shop.create({
+      data: {
+        domain: shop,
+        accessToken: session.accessToken || "",
+      },
+    });
+  }
+
+  // Get analytics data
+  const now = new Date();
+  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+  const analytics = await prisma.analytics.findMany({
+    where: {
+      shopId: shopRecord.id,
+      createdAt: {
+        gte: thirtyDaysAgo,
+      },
+    },
+    orderBy: {
+      createdAt: "desc",
+    },
+  });
+
+  // Calculate stats
+  const authSuccesses = analytics.filter((a) => a.eventType === "auth_success");
+  const authFailures = analytics.filter((a) => a.eventType === "auth_failure");
+  const smsSent = analytics.filter((a) => a.eventType === "sms_sent");
+  const smsFailed = analytics.filter((a) => a.eventType === "sms_failed");
+
+  const totalAuthentications = authSuccesses.length + authFailures.length;
+  const successRate =
+    totalAuthentications > 0
+      ? (authSuccesses.length / totalAuthentications) * 100
+      : 0;
+
+  const totalSms = smsSent.length + smsFailed.length;
+  const smsDeliveryRate =
+    totalSms > 0 ? (smsSent.length / totalSms) * 100 : 0;
+
+  const authMethodBreakdown = {
+    sms: authSuccesses.filter((a) => a.method === "sms").length,
+    email: authSuccesses.filter((a) => a.method === "email").length,
+    google: authSuccesses.filter((a) => a.method === "google").length,
+    apple: authSuccesses.filter((a) => a.method === "apple").length,
+    facebook: authSuccesses.filter((a) => a.method === "facebook").length,
+  };
+
+  const recentActivity = analytics.slice(0, 10).map((a) => ({
+    id: a.id,
+    eventType: a.eventType,
+    method: a.method,
+    createdAt: a.createdAt.toISOString(),
+  }));
+
+  const stats: AnalyticsStats = {
+    totalAuthentications,
+    authMethodBreakdown,
+    successRate,
+    smsDeliveryRate,
+    recentActivity,
+  };
+
+  return json({ stats, shop });
 };
 
 export default function Index() {
-  const fetcher = useFetcher<typeof action>();
+  const { stats } = useLoaderData<typeof loader>();
 
-  const shopify = useAppBridge();
-  const isLoading =
-    ["loading", "submitting"].includes(fetcher.state) &&
-    fetcher.formMethod === "POST";
-  const productId = fetcher.data?.product?.id.replace(
-    "gid://shopify/Product/",
-    "",
-  );
+  const formatPercentage = (value: number) => {
+    return `${value.toFixed(1)}%`;
+  };
 
-  useEffect(() => {
-    if (productId) {
-      shopify.toast.show("Product created");
+  const formatEventType = (eventType: string) => {
+    return eventType
+      .split("_")
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
+  };
+
+  const getEventBadge = (eventType: string) => {
+    if (eventType === "auth_success" || eventType === "sms_sent") {
+      return <Badge tone="success">{formatEventType(eventType)}</Badge>;
     }
-  }, [productId, shopify]);
-  const generateProduct = () => fetcher.submit({}, { method: "POST" });
+    if (eventType === "auth_failure" || eventType === "sms_failed") {
+      return <Badge tone="critical">{formatEventType(eventType)}</Badge>;
+    }
+    return <Badge>{formatEventType(eventType)}</Badge>;
+  };
 
   return (
     <Page>
-      <TitleBar title="Remix app template">
-        <button variant="primary" onClick={generateProduct}>
-          Generate a product
-        </button>
-      </TitleBar>
+      <TitleBar title="Multi-Channel Authentication Dashboard" />
       <BlockStack gap="500">
         <Layout>
           <Layout.Section>
-            <Card>
-              <BlockStack gap="500">
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Congrats on creating a new Shopify app 🎉
-                  </Text>
-                  <Text variant="bodyMd" as="p">
-                    This embedded app template uses{" "}
-                    <Link
-                      url="https://shopify.dev/docs/apps/tools/app-bridge"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      App Bridge
-                    </Link>{" "}
-                    interface examples like an{" "}
-                    <Link url="/app/additional" removeUnderline>
-                      additional page in the app nav
-                    </Link>
-                    , as well as an{" "}
-                    <Link
-                      url="https://shopify.dev/docs/api/admin-graphql"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      Admin GraphQL
-                    </Link>{" "}
-                    mutation demo, to provide a starting point for app
-                    development.
-                  </Text>
-                </BlockStack>
-                <BlockStack gap="200">
-                  <Text as="h3" variant="headingMd">
-                    Get started with products
-                  </Text>
-                  <Text as="p" variant="bodyMd">
-                    Generate a product with GraphQL and get the JSON output for
-                    that product. Learn more about the{" "}
-                    <Link
-                      url="https://shopify.dev/docs/api/admin-graphql/latest/mutations/productCreate"
-                      target="_blank"
-                      removeUnderline
-                    >
-                      productCreate
-                    </Link>{" "}
-                    mutation in our API references.
-                  </Text>
-                </BlockStack>
-                <InlineStack gap="300">
-                  <Button loading={isLoading} onClick={generateProduct}>
-                    Generate a product
-                  </Button>
-                  {fetcher.data?.product && (
-                    <Button
-                      url={`shopify:admin/products/${productId}`}
-                      target="_blank"
-                      variant="plain"
-                    >
-                      View product
-                    </Button>
-                  )}
-                </InlineStack>
-                {fetcher.data?.product && (
-                  <>
-                    <Text as="h3" variant="headingMd">
-                      {" "}
-                      productCreate mutation
-                    </Text>
-                    <Box
-                      padding="400"
-                      background="bg-surface-active"
-                      borderWidth="025"
-                      borderRadius="200"
-                      borderColor="border"
-                      overflowX="scroll"
-                    >
-                      <pre style={{ margin: 0 }}>
-                        <code>
-                          {JSON.stringify(fetcher.data.product, null, 2)}
-                        </code>
-                      </pre>
-                    </Box>
-                    <Text as="h3" variant="headingMd">
-                      {" "}
-                      productVariantsBulkUpdate mutation
-                    </Text>
-                    <Box
-                      padding="400"
-                      background="bg-surface-active"
-                      borderWidth="025"
-                      borderRadius="200"
-                      borderColor="border"
-                      overflowX="scroll"
-                    >
-                      <pre style={{ margin: 0 }}>
-                        <code>
-                          {JSON.stringify(fetcher.data.variant, null, 2)}
-                        </code>
-                      </pre>
-                    </Box>
-                  </>
-                )}
-              </BlockStack>
-            </Card>
-          </Layout.Section>
-          <Layout.Section variant="oneThird">
-            <BlockStack gap="500">
+            <BlockStack gap="400">
               <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    App template specs
+                <BlockStack gap="400">
+                  <Text as="h2" variant="headingLg">
+                    Welcome to Multi-Channel Authentication
                   </Text>
-                  <BlockStack gap="200">
+                  <Text as="p" variant="bodyMd" tone="subdued">
+                    Manage SMS, Email, and OAuth authentication for your
+                    customers. View analytics and configure providers from this
+                    dashboard.
+                  </Text>
+                </BlockStack>
+              </Card>
+
+              <Card>
+                <BlockStack gap="400">
+                  <Text as="h3" variant="headingMd">
+                    Quick Stats (Last 30 Days)
+                  </Text>
+                  <Layout>
+                    <Layout.Section variant="oneThird">
+                      <Card>
+                        <BlockStack gap="200">
+                          <Text as="p" variant="bodyMd" tone="subdued">
+                            Total Authentications
+                          </Text>
+                          <Text as="p" variant="heading2xl">
+                            {stats.totalAuthentications}
+                          </Text>
+                        </BlockStack>
+                      </Card>
+                    </Layout.Section>
+                    <Layout.Section variant="oneThird">
+                      <Card>
+                        <BlockStack gap="200">
+                          <Text as="p" variant="bodyMd" tone="subdued">
+                            Success Rate
+                          </Text>
+                          <Text as="p" variant="heading2xl">
+                            {formatPercentage(stats.successRate)}
+                          </Text>
+                        </BlockStack>
+                      </Card>
+                    </Layout.Section>
+                    <Layout.Section variant="oneThird">
+                      <Card>
+                        <BlockStack gap="200">
+                          <Text as="p" variant="bodyMd" tone="subdued">
+                            SMS Delivery Rate
+                          </Text>
+                          <Text as="p" variant="heading2xl">
+                            {formatPercentage(stats.smsDeliveryRate)}
+                          </Text>
+                        </BlockStack>
+                      </Card>
+                    </Layout.Section>
+                  </Layout>
+                </BlockStack>
+              </Card>
+
+              <Card>
+                <BlockStack gap="400">
+                  <Text as="h3" variant="headingMd">
+                    Authentication Methods Used
+                  </Text>
+                  <BlockStack gap="300">
                     <InlineStack align="space-between">
                       <Text as="span" variant="bodyMd">
-                        Framework
+                        SMS Authentication
                       </Text>
-                      <Link
-                        url="https://remix.run"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        Remix
-                      </Link>
+                      <Badge tone="info">
+                        {String(stats.authMethodBreakdown.sms)} authentications
+                      </Badge>
                     </InlineStack>
                     <InlineStack align="space-between">
                       <Text as="span" variant="bodyMd">
-                        Database
+                        Email/Password
                       </Text>
-                      <Link
-                        url="https://www.prisma.io/"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        Prisma
-                      </Link>
+                      <Badge tone="info">
+                        {String(stats.authMethodBreakdown.email)} authentications
+                      </Badge>
                     </InlineStack>
                     <InlineStack align="space-between">
                       <Text as="span" variant="bodyMd">
-                        Interface
+                        Google OAuth
                       </Text>
-                      <span>
-                        <Link
-                          url="https://polaris.shopify.com"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          Polaris
-                        </Link>
-                        {", "}
-                        <Link
-                          url="https://shopify.dev/docs/apps/tools/app-bridge"
-                          target="_blank"
-                          removeUnderline
-                        >
-                          App Bridge
-                        </Link>
-                      </span>
+                      <Badge tone="info">
+                        {String(stats.authMethodBreakdown.google)} authentications
+                      </Badge>
                     </InlineStack>
                     <InlineStack align="space-between">
                       <Text as="span" variant="bodyMd">
-                        API
+                        Apple OAuth
                       </Text>
-                      <Link
-                        url="https://shopify.dev/docs/api/admin-graphql"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphQL API
-                      </Link>
+                      <Badge tone="info">
+                        {String(stats.authMethodBreakdown.apple)} authentications
+                      </Badge>
+                    </InlineStack>
+                    <InlineStack align="space-between">
+                      <Text as="span" variant="bodyMd">
+                        Facebook OAuth
+                      </Text>
+                      <Badge tone="info">
+                        {String(stats.authMethodBreakdown.facebook)} authentications
+                      </Badge>
                     </InlineStack>
                   </BlockStack>
                 </BlockStack>
               </Card>
-              <Card>
-                <BlockStack gap="200">
-                  <Text as="h2" variant="headingMd">
-                    Next steps
-                  </Text>
-                  <List>
-                    <List.Item>
-                      Build an{" "}
-                      <Link
-                        url="https://shopify.dev/docs/apps/getting-started/build-app-example"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        {" "}
-                        example app
-                      </Link>{" "}
-                      to get started
-                    </List.Item>
-                    <List.Item>
-                      Explore Shopify’s API with{" "}
-                      <Link
-                        url="https://shopify.dev/docs/apps/tools/graphiql-admin-api"
-                        target="_blank"
-                        removeUnderline
-                      >
-                        GraphiQL
-                      </Link>
-                    </List.Item>
-                  </List>
-                </BlockStack>
-              </Card>
+
+              {stats.recentActivity.length > 0 && (
+                <Card>
+                  <BlockStack gap="400">
+                    <Text as="h3" variant="headingMd">
+                      Recent Activity
+                    </Text>
+                    <BlockStack gap="300">
+                      {stats.recentActivity.map((activity) => (
+                        <InlineStack key={activity.id} align="space-between">
+                          <BlockStack gap="100">
+                            {getEventBadge(activity.eventType)}
+                            {activity.method && (
+                              <Text as="span" variant="bodySm" tone="subdued">
+                                Method: {activity.method}
+                              </Text>
+                            )}
+                          </BlockStack>
+                          <Text as="span" variant="bodySm" tone="subdued">
+                            {new Date(activity.createdAt).toLocaleString()}
+                          </Text>
+                        </InlineStack>
+                      ))}
+                    </BlockStack>
+                  </BlockStack>
+                </Card>
+              )}
             </BlockStack>
           </Layout.Section>
         </Layout>
