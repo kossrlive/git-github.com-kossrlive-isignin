@@ -7,6 +7,20 @@ import { requestLogger } from '../requestLogger.js';
  * Requirements: 7.5
  */
 
+// Mock the logger module
+const mockLoggerInfo = jest.fn();
+const mockCreateRequestLogger = jest.fn(() => ({
+  info: mockLoggerInfo,
+  error: jest.fn(),
+  warn: jest.fn(),
+  debug: jest.fn(),
+}));
+
+jest.mock('../../config/logger.js', () => ({
+  createRequestLogger: (...args: any[]) => mockCreateRequestLogger(...args),
+  generateRequestId: jest.fn(() => 'test-request-id-' + Math.random().toString(36).substring(7)),
+}));
+
 // Mock response object
 const createMockResponse = (): Partial<Response> => {
   const res: any = {
@@ -19,6 +33,10 @@ const createMockResponse = (): Partial<Response> => {
   };
   return res;
 };
+
+beforeEach(() => {
+  jest.clearAllMocks();
+});
 
 describe('Request Logger Middleware - Property Tests', () => {
   /**
@@ -37,6 +55,10 @@ describe('Request Logger Middleware - Property Tests', () => {
           fc.ipV4(),
           fc.string({ minLength: 10, maxLength: 100 }),
           (method, path, ip, userAgent) => {
+            // Clear mocks before each property test iteration
+            mockLoggerInfo.mockClear();
+            mockCreateRequestLogger.mockClear();
+            
             const req: Partial<Request> = {
               method,
               path,
@@ -69,7 +91,7 @@ describe('Request Logger Middleware - Property Tests', () => {
             expect(req.startTime).toBeGreaterThan(0);
 
             // Verify logger.info was called with correct data
-            expect(req.logger!.info).toHaveBeenCalledWith(
+            expect(mockLoggerInfo).toHaveBeenCalledWith(
               'Request started',
               expect.objectContaining({
                 method,
@@ -131,6 +153,10 @@ describe('Request Logger Middleware - Property Tests', () => {
           fc.constantFrom('sms', 'email', 'google', 'none'),
           fc.string({ minLength: 1, maxLength: 100 }),
           (method, path, statusCode, authMethod, responseData) => {
+            // Clear mocks before each property test iteration
+            mockLoggerInfo.mockClear();
+            mockCreateRequestLogger.mockClear();
+            
             const req: Partial<Request> = {
               method,
               path,
@@ -158,7 +184,7 @@ describe('Request Logger Middleware - Property Tests', () => {
             res.send!(responseData);
 
             // Verify completion was logged
-            expect(req.logger!.info).toHaveBeenCalledWith(
+            expect(mockLoggerInfo).toHaveBeenCalledWith(
               'Request completed',
               expect.objectContaining({
                 method,
@@ -169,7 +195,7 @@ describe('Request Logger Middleware - Property Tests', () => {
             );
 
             // Verify duration was logged
-            const completionCall = (req.logger!.info as jest.Mock).mock.calls.find(
+            const completionCall = mockLoggerInfo.mock.calls.find(
               (call) => call[0] === 'Request completed'
             );
             expect(completionCall).toBeDefined();
@@ -227,6 +253,10 @@ describe('Request Logger Middleware - Property Tests', () => {
           fc.constantFrom('GET', 'POST'),
           fc.constantFrom('/api/auth/send-otp', '/api/health'),
           (method, path) => {
+            // Clear mocks before each property test iteration
+            mockLoggerInfo.mockClear();
+            mockCreateRequestLogger.mockClear();
+            
             const req: Partial<Request> = {
               method,
               path,
@@ -248,7 +278,7 @@ describe('Request Logger Middleware - Property Tests', () => {
             }).not.toThrow();
 
             // Should still log request start
-            expect(req.logger!.info).toHaveBeenCalledWith(
+            expect(mockLoggerInfo).toHaveBeenCalledWith(
               'Request started',
               expect.objectContaining({
                 method,
