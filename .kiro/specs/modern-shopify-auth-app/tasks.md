@@ -15,29 +15,29 @@
   - Set up Prisma client
   - _Requirements: 2.5_
 
-- [ ] 3. Migrate existing backend services to new app structure
-  - [ ] 3.1 Copy existing service files to app/services/
+- [x] 3. Migrate existing backend services to new app structure
+  - [x] 3.1 Copy existing service files to app/services/
     - Copy SMSService, OTPService, MultipassService
     - Copy AuthService, CustomerService, OrderService, SettingsService
     - _Requirements: 18.1, 18.2_
   
-  - [ ] 3.2 Copy existing provider files to app/providers/
+  - [x] 3.2 Copy existing provider files to app/providers/
     - Copy SmsToProvider, TwilioProvider, GoogleOAuthProvider
     - Copy provider interfaces (ISMSProvider, IOAuthProvider)
     - _Requirements: 18.2_
   
-  - [ ] 3.3 Update services to work with React Router and Prisma
+  - [x] 3.3 Update services to work with React Router and Prisma
     - Update SettingsService to use Prisma instead of direct database calls
     - Update MultipassService to accept shop parameter
     - Ensure all services export properly for React Router
     - _Requirements: 18.3_
   
-  - [ ] 3.4 Set up Redis connection for existing services
+  - [x] 3.4 Set up Redis connection for existing services
     - Configure Redis client in app/lib/redis.server.ts
     - Ensure OTPService and rate limiting use the same Redis instance
     - _Requirements: 18.4_
   
-  - [ ] 3.5 Set up Bull queue for SMS jobs
+  - [x] 3.5 Set up Bull queue for SMS jobs
     - Configure Bull queue in app/lib/queue.server.ts
     - Ensure SMSService uses the queue for sending SMS
     - _Requirements: 18.5_
