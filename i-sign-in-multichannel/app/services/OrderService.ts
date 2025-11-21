@@ -1,381 +1,187 @@
 /**
  * Order Service
- * Manages order OTP generation and verification for order confirmation
- * Requirements: 8.1, 8.2, 8.3, 8.4
+ * Handles order-related operations including confirmation SMS
+ * Requirements: 14.1, 14.2, 14.3, 14.4, 14.5
  */
 
-import { LATEST_API_VERSION, Session, shopifyApi } from '@shopify/shopify-api';
-import '@shopify/shopify-api/adapters/node';
-import { Redis } from 'ioredis';
-import { config } from '../config/index.js';
 import { logger } from '../config/logger.js';
-import { SendSMSParams } from '../providers/ISMSProvider.js';
-import { OTPService } from './OTPService.js';
-import { SMSService } from './SMSService.js';
 
-export interface ShopifyOrder {
+export interface OrderData {
   id: string;
-  order_number: string;
+  number: string;
+  total: string;
+  currency: string;
   customer?: {
-    id: string;
-    email?: string;
     phone?: string;
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+  };
+  lineItems?: Array<{
+    title: string;
+    quantity: number;
+    price: string;
+  }>;
+  createdAt: string;
+}
+
+export interface OrderWebhookPayload {
+  id: number;
+  order_number: number;
+  total_price: string;
+  currency: string;
+  customer?: {
+    phone?: string;
+    email?: string;
     first_name?: string;
     last_name?: string;
   };
-  total_price: string;
+  line_items?: Array<{
+    title: string;
+    quantity: number;
+    price: string;
+  }>;
   created_at: string;
-  financial_status?: string;
-  fulfillment_status?: string;
 }
 
 export class OrderService {
-  private redis: Redis;
-  private otpService: OTPService;
-  private smsService: SMSService;
-  private shopify: ReturnType<typeof shopifyApi>;
-  private session: Session;
-  private orderOTPTTL: number = 600; // 10 minutes
-
-  constructor(redis: Redis, otpService: OTPService, smsService: SMSService) {
-    this.redis = redis;
-    this.otpService = otpService;
-    this.smsService = smsService;
-
-    // Initialize Shopify API client
-    this.shopify = shopifyApi({
-      apiKey: config.shopify.apiKey,
-      apiSecretKey: config.shopify.apiSecret,
-      scopes: config.shopify.scopes.split(','),
-      hostName: config.shopify.shopDomain.replace('https://', '').replace('http://', ''),
-      apiVersion: LATEST_API_VERSION,
-      isEmbeddedApp: true,
-    });
-
-    // Create a session for API calls
-    this.session = new Session({
-      id: `offline_${config.shopify.shopDomain}`,
-      shop: config.shopify.shopDomain,
-      state: 'online',
-      isOnline: false,
-      accessToken: config.shopify.apiSecret,
-    });
-  }
-
   /**
-   * Generate unique OTP for order confirmation
-   * Requirement 8.1: Generate unique OTP for order
+   * Extract order data from webhook payload
+   * Requirement 14.2: Extract customer phone and order details
    */
-  async generateOrderOTP(orderId: string, orderNumber: string, phone: string): Promise<string> {
+  extractOrderData(payload: OrderWebhookPayload): OrderData {
     try {
-      // Generate a 6-digit OTP
-      const otp = this.otpService.generateOTP(6);
-
-      // Store OTP with order ID in Redis (10 min TTL)
-      // Requirement 8.1: Store OTP with order ID in Redis (10 min TTL)
-      await this.storeOrderOTP(orderId, otp);
-
-      logger.info('Order OTP generated', {
-        orderId,
-        orderNumber,
-        phone: this.maskPhone(phone),
-        ttl: this.orderOTPTTL
-      });
-
-      // Queue SMS with order number
-      // Requirement 8.2: Queue SMS with order number
-      await this.sendOrderOTPSMS(phone, otp, orderNumber);
-
-      return otp;
-    } catch (error) {
-      logger.error('Failed to generate order OTP', {
-        orderId,
-        orderNumber,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      throw new Error('Failed to generate order OTP');
-    }
-  }
-
-  /**
-   * Store order OTP in Redis with order ID
-   * Requirement 8.1: Store OTP with order ID in Redis (10 min TTL)
-   */
-  private async storeOrderOTP(orderId: string, otp: string): Promise<void> {
-    const key = this.getOrderOTPKey(orderId);
-
-    try {
-      await this.redis.setex(key, this.orderOTPTTL, otp);
-
-      logger.info('Order OTP stored in Redis', {
-        orderId,
-        ttl: this.orderOTPTTL
-      });
-    } catch (error) {
-      logger.error('Failed to store order OTP in Redis', {
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      throw new Error('Failed to store order OTP');
-    }
-  }
-
-  /**
-   * Send order OTP via SMS
-   * Requirement 8.2: Queue SMS with order number
-   */
-  private async sendOrderOTPSMS(phone: string, otp: string, orderNumber: string): Promise<void> {
-    try {
-      const message = `Your order #${orderNumber} confirmation code is: ${otp}. This code expires in 10 minutes.`;
-
-      const params: SendSMSParams = {
-        to: phone,
-        message,
-        callbackUrl: `${config.shopify.appUrl}/api/webhooks/sms-dlr`
+      const orderData: OrderData = {
+        id: payload.id.toString(),
+        number: payload.order_number.toString(),
+        total: payload.total_price,
+        currency: payload.currency,
+        createdAt: payload.created_at
       };
 
-      // Send SMS (this will use the queue internally via SMSService)
-      const result = await this.smsService.sendSMS(params);
-
-      if (!result.success) {
-        logger.error('Failed to send order OTP SMS', {
-          phone: this.maskPhone(phone),
-          orderNumber,
-          error: result.error
-        });
-        throw new Error('Failed to send order OTP SMS');
-      }
-
-      logger.info('Order OTP SMS sent', {
-        phone: this.maskPhone(phone),
-        orderNumber,
-        messageId: result.messageId,
-        provider: result.provider
-      });
-    } catch (error) {
-      logger.error('Failed to send order OTP SMS', {
-        phone: this.maskPhone(phone),
-        orderNumber,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      throw error;
-    }
-  }
-
-  /**
-   * Verify order OTP
-   * Requirement 8.3: Verify OTP matches order ID
-   */
-  async verifyOrderOTP(orderId: string, otp: string): Promise<boolean> {
-    const key = this.getOrderOTPKey(orderId);
-
-    try {
-      const storedOTP = await this.redis.get(key);
-
-      if (!storedOTP) {
-        logger.warn('Order OTP not found or expired', {
-          orderId
-        });
-        return false;
-      }
-
-      const isValid = storedOTP === otp;
-
-      if (isValid) {
-        logger.info('Order OTP verified successfully', {
-          orderId
-        });
-
-        // Delete OTP after successful use
-        // Requirement 8.3: Delete OTP after use
-        await this.deleteOrderOTP(orderId);
-      } else {
-        logger.warn('Invalid order OTP provided', {
-          orderId
-        });
-      }
-
-      return isValid;
-    } catch (error) {
-      logger.error('Failed to verify order OTP', {
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      throw new Error('Failed to verify order OTP');
-    }
-  }
-
-  /**
-   * Delete order OTP after use
-   * Requirement 8.3: Delete OTP after use
-   */
-  private async deleteOrderOTP(orderId: string): Promise<void> {
-    const key = this.getOrderOTPKey(orderId);
-
-    try {
-      await this.redis.del(key);
-
-      logger.info('Order OTP deleted after successful verification', {
-        orderId
-      });
-    } catch (error) {
-      logger.error('Failed to delete order OTP', {
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      // Don't throw - OTP will expire anyway
-    }
-  }
-
-  /**
-   * Update order status in Shopify after verification
-   * Requirement 8.4: Update order status in Shopify
-   */
-  async confirmOrder(orderId: string): Promise<void> {
-    try {
-      logger.info('Confirming order in Shopify', {
-        orderId
-      });
-
-      const client = new this.shopify.clients.Rest({ session: this.session });
-
-      // Add a note to the order indicating it was confirmed via OTP
-      await client.post({
-        path: `orders/${orderId}/note`,
-        data: {
-          note: {
-            note: `Order confirmed via SMS OTP at ${new Date().toISOString()}`
-          }
-        }
-      });
-
-      // You could also add a tag or update custom attributes
-      // depending on your specific requirements
-
-      logger.info('Order confirmed successfully', {
-        orderId
-      });
-    } catch (error) {
-      logger.error('Failed to confirm order in Shopify', {
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      throw new Error('Failed to confirm order');
-    }
-  }
-
-  /**
-   * Get order details from Shopify
-   */
-  async getOrder(orderId: string): Promise<ShopifyOrder | null> {
-    try {
-      logger.info('Fetching order from Shopify', {
-        orderId
-      });
-
-      const client = new this.shopify.clients.Rest({ session: this.session });
-
-      const response = await client.get({
-        path: `orders/${orderId}`
-      });
-
-      const order = (response.body as { order: ShopifyOrder }).order;
-
-      logger.info('Order fetched successfully', {
-        orderId,
-        orderNumber: order.order_number
-      });
-
-      return order;
-    } catch (error) {
-      logger.error('Failed to fetch order from Shopify', {
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      return null;
-    }
-  }
-
-  /**
-   * Send order confirmation OTP (wrapper for webhook handler)
-   * Requirement 8.1: Generate and send OTP for order confirmation
-   */
-  async sendOrderConfirmationOTP(
-    orderId: string,
-    orderNumber: string,
-    phone: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      await this.generateOrderOTP(orderId, orderNumber, phone);
-      return { success: true };
-    } catch (error) {
-      logger.error('Failed to send order confirmation OTP', {
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to send OTP'
-      };
-    }
-  }
-
-  /**
-   * Verify and confirm order
-   * Requirements: 8.3, 8.4: Verify OTP and update order status
-   */
-  async verifyAndConfirmOrder(
-    orderId: string,
-    otp: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      // Verify OTP
-      const isValid = await this.verifyOrderOTP(orderId, otp);
-
-      if (!isValid) {
-        return {
-          success: false,
-          error: 'Invalid or expired OTP'
+      // Extract customer data if available
+      if (payload.customer) {
+        orderData.customer = {
+          phone: payload.customer.phone || undefined,
+          email: payload.customer.email || undefined,
+          firstName: payload.customer.first_name || undefined,
+          lastName: payload.customer.last_name || undefined
         };
       }
 
-      // Confirm order in Shopify
-      await this.confirmOrder(orderId);
+      // Extract line items if available
+      if (payload.line_items && payload.line_items.length > 0) {
+        orderData.lineItems = payload.line_items.map(item => ({
+          title: item.title,
+          quantity: item.quantity,
+          price: item.price
+        }));
+      }
 
-      return { success: true };
-    } catch (error) {
-      logger.error('Failed to verify and confirm order', {
-        orderId,
-        error: error instanceof Error ? error.message : 'Unknown error'
+      logger.info('Order data extracted successfully', {
+        orderId: orderData.id,
+        orderNumber: orderData.number,
+        hasCustomer: !!orderData.customer,
+        hasPhone: !!orderData.customer?.phone
       });
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to confirm order'
-      };
+
+      return orderData;
+    } catch (error) {
+      logger.error('Failed to extract order data', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        payload
+      });
+      throw new Error('Failed to extract order data from webhook payload');
     }
   }
 
   /**
-   * Check if order requires confirmation
-   * This can be customized based on business logic
+   * Format order confirmation message with template variables
+   * Requirement 14.3: Format order confirmation message
+   * 
+   * Supported template variables:
+   * - {order.number} - Order number
+   * - {order.id} - Order ID
+   * - {order.total} - Order total with currency
+   * - {customer.firstName} - Customer first name
+   * - {customer.lastName} - Customer last name
+   * - {customer.email} - Customer email
    */
-  requiresConfirmation(_order: ShopifyOrder): boolean {
-    // Example logic: require confirmation for orders over a certain amount
-    // or for first-time customers, etc.
-    // For now, we'll require confirmation for all orders
-    return true;
-  }
+  formatConfirmationMessage(template: string, orderData: OrderData): string {
+    try {
+      let message = template;
 
-  // Redis key helper
-  private getOrderOTPKey(orderId: string): string {
-    return `order:otp:${orderId}`;
-  }
+      // Replace order variables
+      message = message.replace(/{order\.number}/g, orderData.number);
+      message = message.replace(/{order\.id}/g, orderData.id);
+      message = message.replace(/{order\.total}/g, `${orderData.currency} ${orderData.total}`);
 
-  // Mask phone number for logging (PII protection)
-  private maskPhone(phone: string): string {
-    if (phone.length <= 4) {
-      return '****';
+      // Replace customer variables if available
+      if (orderData.customer) {
+        message = message.replace(/{customer\.firstName}/g, orderData.customer.firstName || '');
+        message = message.replace(/{customer\.lastName}/g, orderData.customer.lastName || '');
+        message = message.replace(/{customer\.email}/g, orderData.customer.email || '');
+      } else {
+        // Remove customer variables if no customer data
+        message = message.replace(/{customer\.\w+}/g, '');
+      }
+
+      // Clean up any double spaces
+      message = message.replace(/\s+/g, ' ').trim();
+
+      logger.info('Order confirmation message formatted', {
+        orderId: orderData.id,
+        messageLength: message.length
+      });
+
+      return message;
+    } catch (error) {
+      logger.error('Failed to format confirmation message', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+        template,
+        orderId: orderData.id
+      });
+      throw new Error('Failed to format order confirmation message');
     }
-    return phone.slice(0, -4).replace(/./g, '*') + phone.slice(-4);
+  }
+
+  /**
+   * Validate that order has required data for SMS confirmation
+   */
+  canSendConfirmation(orderData: OrderData): boolean {
+    const hasPhone = !!orderData.customer?.phone;
+    const hasOrderNumber = !!orderData.number;
+
+    if (!hasPhone) {
+      logger.warn('Cannot send order confirmation - no phone number', {
+        orderId: orderData.id,
+        orderNumber: orderData.number
+      });
+    }
+
+    if (!hasOrderNumber) {
+      logger.warn('Cannot send order confirmation - no order number', {
+        orderId: orderData.id
+      });
+    }
+
+    return hasPhone && hasOrderNumber;
+  }
+
+  /**
+   * Normalize phone number to E.164 format
+   * Ensures phone number is in correct format for SMS sending
+   */
+  normalizePhoneNumber(phone: string): string {
+    // Remove all non-digit characters except leading +
+    let normalized = phone.replace(/[^\d+]/g, '');
+
+    // Ensure it starts with +
+    if (!normalized.startsWith('+')) {
+      // Assume US number if no country code
+      normalized = '+1' + normalized;
+    }
+
+    return normalized;
   }
 }

@@ -80,6 +80,9 @@ model ShopSettings {
   oauthAuthEnabled         Boolean @default(true)
   orderConfirmationEnabled Boolean @default(true)
   
+  // Order Confirmation Settings
+  orderConfirmationMessage String? @default("Thank you for your order! Order #{order.number} - Total: ${order.total}. We'll notify you when it ships.")
+  
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }

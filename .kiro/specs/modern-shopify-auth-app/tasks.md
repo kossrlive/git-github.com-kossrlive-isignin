@@ -318,8 +318,8 @@
     - **Property 34: Logout Invalidates Session**
     - **Validates: Requirements 13.1, 13.2, 13.3, 13.4, 13.5**
 
-- [ ] 13. Implement order confirmation SMS
-  - [ ] 13.1 Create order webhook route (app/routes/webhooks.orders.create.ts)
+- [x] 13. Implement order confirmation SMS
+  - [x] 13.1 Create order webhook route (app/routes/webhooks.orders.create.ts)
     - Validate webhook HMAC
     - Extract customer phone and order details
     - Format order confirmation message
@@ -336,7 +336,7 @@
     - **Property 38: SMS Delivery Status Logging**
     - **Validates: Requirements 14.2, 14.3, 14.4, 14.5**
   
-  - [ ] 13.3 Register order webhook in Shopify
+  - [x] 13.3 Register order webhook in Shopify
     - Configure webhook subscription in app setup
     - Set webhook URL to /webhooks/orders/create
     - Test webhook delivery

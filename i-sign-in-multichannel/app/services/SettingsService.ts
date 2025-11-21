@@ -37,6 +37,10 @@ export interface AuthSettings {
     buttonStyle: 'rounded' | 'square';
     logoUrl: string;
   };
+  orderConfirmation: {
+    enabled: boolean;
+    messageTemplate: string;
+  };
   multipassSecret?: string;
 }
 
@@ -92,6 +96,10 @@ export class SettingsService {
           primaryColor: settings.primaryColor,
           buttonStyle: settings.buttonStyle as 'rounded' | 'square',
           logoUrl: settings.logoUrl || ''
+        },
+        orderConfirmation: {
+          enabled: settings.orderConfirmationEnabled,
+          messageTemplate: settings.orderConfirmationMessage || "Thank you for your order! Order #{order.number} - Total: ${order.total}. We'll notify you when it ships."
         },
         multipassSecret: settings.multipassSecret || undefined
       };
@@ -151,7 +159,9 @@ export class SettingsService {
           multipassSecret: settings.multipassSecret,
           smsAuthEnabled: settings.enabledMethods.sms,
           emailAuthEnabled: settings.enabledMethods.email,
-          oauthAuthEnabled: settings.enabledMethods.google
+          oauthAuthEnabled: settings.enabledMethods.google,
+          orderConfirmationEnabled: settings.orderConfirmation.enabled,
+          orderConfirmationMessage: settings.orderConfirmation.messageTemplate
         },
         update: {
           smsPrimary: settings.smsProvider.primary,
@@ -169,7 +179,9 @@ export class SettingsService {
           multipassSecret: settings.multipassSecret,
           smsAuthEnabled: settings.enabledMethods.sms,
           emailAuthEnabled: settings.enabledMethods.email,
-          oauthAuthEnabled: settings.enabledMethods.google
+          oauthAuthEnabled: settings.enabledMethods.google,
+          orderConfirmationEnabled: settings.orderConfirmation.enabled,
+          orderConfirmationMessage: settings.orderConfirmation.messageTemplate
         }
       });
 
